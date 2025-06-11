@@ -38,13 +38,13 @@ func eventuallyExpect(t *testing.T, expected int, actual int) {
 func TestFSNotifyReveiver(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
-	logs, actualLogsConsumer := testSetup(t, TEST_PATH)
+	logs, actualLogsConsumer := testSetup(t, TEST_INCLUDE_PATH, TEST_EXCLUDE_PATH)
 
 	// Act
 	TEST_FILES := 1
 	createFiles := make([]string, TEST_FILES)
 	for tc := range TEST_FILES {
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", TEST_PATH, gofakeit.LetterN(5))
+		createFiles[tc] = fmt.Sprintf("%v/%v.txt", TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 		t.Log("test-case", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
@@ -84,12 +84,12 @@ func TestFSNotifyReveiverListenToNewDir(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
 	// We want to only listen to the outer path, but add files to a dir within
-	logs, actualLogsConsumer := testSetup(t, TEST_PATH)
+	logs, actualLogsConsumer := testSetup(t, TEST_INCLUDE_PATH, TEST_EXCLUDE_PATH)
 	// Act
 	TEST_FILES := 1
 	createFiles := make([]string, TEST_FILES)
 	for tc := range TEST_FILES {
-		innerDir := fmt.Sprintf("%v/%v", TEST_PATH, gofakeit.LetterN(5))
+		innerDir := fmt.Sprintf("%v/%v", TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 		err := os.Mkdir(innerDir, 0777)
 		if err != nil {
 			log.Fatal(err)
@@ -145,7 +145,7 @@ func TestFSNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
 	// We want to only listen to the outer path, but add files to a dir within
-	logs, actualLogsConsumer := testSetup(t, TEST_PATH)
+	logs, actualLogsConsumer := testSetup(t, TEST_INCLUDE_PATH, TEST_EXCLUDE_PATH)
 
 	// Act
 	TEST_FILES := 1
@@ -194,7 +194,7 @@ func TestFSNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
 	// We want to only listen to the outer path, but add files to a dir within
-	logs, actualLogsConsumer := testSetup(t, TEST_PATH)
+	logs, actualLogsConsumer := testSetup(t, TEST_INCLUDE_PATH, TEST_EXCLUDE_PATH)
 
 	// Act
 	TEST_FILES := 1
@@ -255,13 +255,13 @@ func TestFSNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 func TestDeletingQuicklyIgnoresNoOp(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
-	logs, actualLogsConsumer := testSetup(t, TEST_PATH)
+	logs, actualLogsConsumer := testSetup(t, TEST_INCLUDE_PATH, TEST_EXCLUDE_PATH)
 
 	// Act
 	TEST_FILES := 1
 	createFiles := make([]string, TEST_FILES)
 	for tc := range TEST_FILES {
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", TEST_PATH, gofakeit.LetterN(5))
+		createFiles[tc] = fmt.Sprintf("%v/%v.txt", TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 		t.Log("test-case", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
@@ -288,13 +288,13 @@ func TestDeletingQuicklyIgnoresNoOp(t *testing.T) {
 func TestRenameFileCanBeRemoved(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
-	logs, actualLogsConsumer := testSetup(t, TEST_PATH)
+	logs, actualLogsConsumer := testSetup(t, TEST_INCLUDE_PATH, TEST_EXCLUDE_PATH)
 
 	// Act
 	TEST_FILES := 5
 	createFiles := make([]string, TEST_FILES)
 	for tc := range TEST_FILES {
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", TEST_PATH, gofakeit.LetterN(5))
+		createFiles[tc] = fmt.Sprintf("%v/%v.txt", TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 		t.Log("test-case", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
@@ -306,7 +306,7 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 
 		f.Close()
 
-		newName := fmt.Sprintf("%v/%v.txt", TEST_PATH, gofakeit.LetterN(5))
+		newName := fmt.Sprintf("%v/%v.txt", TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 		err = os.Rename(createFiles[tc], newName)
 		if err != nil {
 			log.Fatal(err)
@@ -336,10 +336,10 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 func TestRenameFileNTimes(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
-	logs, actualLogsConsumer := testSetup(t, TEST_PATH)
+	logs, actualLogsConsumer := testSetup(t, TEST_INCLUDE_PATH, TEST_EXCLUDE_PATH)
 
 	// Act
-	orignalName := fmt.Sprintf("%v/%v.txt", TEST_PATH, gofakeit.LetterN(5))
+	orignalName := fmt.Sprintf("%v/%v.txt", TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 	oldName := orignalName
 	t.Log("test-case", "file", oldName)
 	f, err := os.OpenFile(oldName, os.O_CREATE|os.O_WRONLY, 0644)
@@ -351,7 +351,7 @@ func TestRenameFileNTimes(t *testing.T) {
 
 	f.Close()
 	for range gofakeit.UintRange(5, 10) {
-		newName := fmt.Sprintf("%v/%v.txt", TEST_PATH, gofakeit.LetterN(5))
+		newName := fmt.Sprintf("%v/%v.txt", TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 		err = os.Rename(oldName, newName)
 		if err != nil {
 			log.Fatal(err)

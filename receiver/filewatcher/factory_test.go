@@ -18,13 +18,14 @@ func TestCanCreateNewFactort(t *testing.T) {
 
 func TestCanCreateLogsReceiver(t *testing.T) {
 	// Arrange
-	expected_path := TEST_PATH
 	receiverConfig := &FSNotifyReceiverConfig{
-		Path: expected_path,
+		Include: []string{TEST_INCLUDE_PATH},
+		Exclude: []string{TEST_EXCLUDE_PATH},
 	}
 	expectedConsumer := new(consumertest.LogsSink)
 	expectedLogsReceiver := &FileWatcher{
-		path:     expected_path,
+		include:  []string{TEST_INCLUDE_PATH},
+		exclude:  []string{TEST_EXCLUDE_PATH},
 		consumer: expectedConsumer,
 		logger:   zap.NewNop(),
 	}
@@ -43,7 +44,8 @@ func TestCanCreateLogsReceiver(t *testing.T) {
 func TestCanStartingLogsReceiver(t *testing.T) {
 	// Arrange
 	receiverConfig := &FSNotifyReceiverConfig{
-		Path: TEST_PATH,
+		Include: []string{TEST_INCLUDE_PATH},
+		Exclude: []string{TEST_EXCLUDE_PATH},
 	}
 	settings := receivertest.NewNopSettings(component.MustNewType("filewatcher"))
 	settings.Logger = zap.NewNop()

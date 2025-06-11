@@ -18,26 +18,28 @@ type ConfigTestCase struct {
 
 func TestFactoryCreate(t *testing.T) {
 	t.Parallel()
-	tmpPath := TEST_PATH
 	tests := []ConfigTestCase{
 		{
 			Name: "regular",
 			Expected: &FSNotifyReceiverConfig{
-				Path: fmt.Sprintf("%v/regular", tmpPath),
+				Include: []string{TEST_INCLUDE_PATH},
+				Exclude: []string{TEST_EXCLUDE_PATH},
 			},
 			Error: nil,
 		},
 		{
 			Name: "empty",
 			Expected: &FSNotifyReceiverConfig{
-				Path: "",
+				Include: []string{},
+				Exclude: []string{},
 			},
 			Error: nil,
 		},
 		{
 			Name: "problematic",
 			Expected: &FSNotifyReceiverConfig{
-				Path: fmt.Sprintf("%v/-#{:,", tmpPath),
+				Include: []string{fmt.Sprintf("%v/-#{:,", TEST_PATH)},
+				Exclude: []string{},
 			},
 			Error: nil,
 		},

@@ -17,7 +17,8 @@ import (
 )
 
 type FileWatcher struct {
-	path     string
+	include  []string
+	exclude  []string
 	consumer consumer.Logs
 	logger   *zap.Logger
 	watcher  *fsnotify.Watcher
@@ -26,7 +27,8 @@ type FileWatcher struct {
 
 func newfsNotify(cfg *FSNotifyReceiverConfig, consumer consumer.Logs, settings receiver.Settings) (*FileWatcher, error) {
 	return &FileWatcher{
-		path:     cfg.Path,
+		include:  cfg.Include,
+		exclude:  cfg.Exclude,
 		consumer: consumer,
 		logger:   settings.Logger,
 	}, nil
@@ -80,7 +82,10 @@ func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
 	fsn.done = make(chan struct{})
 
 	go fsn.watch(ctx, broker)
-	return broker.AddRecursiveWatch(fsn.path)
+	for _, f := range fsn.include {
+		err = broker.AddRecursiveWatch(f)
+	}
+	return err
 }
 
 func (fsn *FileWatcher) Shutdown(_ context.Context) error {

@@ -5,13 +5,15 @@ import (
 )
 
 type FSNotifyReceiverConfig struct {
-	Path string `mapstructure:"path,omitempty"`
+	Include []string `mapstructure:"include,omitempty"`
+	Exclude []string `mapstructure:"exclude,omitempty"`
 
 	_ struct{}
 }
 
 func createDefaultConfig() component.Config {
 	return &FSNotifyReceiverConfig{
-		Path: "",
+		Include: []string{},
+		Exclude: []string{},
 	}
 }

@@ -13,16 +13,19 @@ import (
 )
 
 var (
-	TEST_PATH        = "testdata"
-	TEST_CONFIG_PATH = "config.yaml"
-	TEST_INNER_PATH  = "testdata/inner"
+	TEST_PATH         = "testdata"
+	TEST_CONFIG_PATH  = "config.yaml"
+	TEST_INCLUDE_PATH = "testdata/include"
+	TEST_EXCLUDE_PATH = "testdata/exclude"
+	TEST_INNER_PATH   = "testdata/include/inner"
 )
 
-func testSetup(t *testing.T, path string) (receiver.Logs, *consumertest.LogsSink) {
+func testSetup(t *testing.T, include, exclude string) (receiver.Logs, *consumertest.LogsSink) {
 	testLogsConsumer := new(consumertest.LogsSink)
 
 	config := &FSNotifyReceiverConfig{
-		Path: path,
+		Include: []string{include},
+		Exclude: []string{exclude},
 	}
 	settings := receivertest.NewNopSettings(component.MustNewType("filewatcher"))
 	settings.Logger = zap.NewNop()
