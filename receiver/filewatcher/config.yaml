@@ -1,0 +1,18 @@
+receivers:
+  filewatcher/regular:
+    path: "testdata/regular"
+  filewatcher/empty:
+  filewatcher/problematic:
+    path: "testdata/-#{:,"
+
+exporters:
+  # NOTE: Prior to v0.86.0 use `logging` instead of `debug`.
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    logs:
+      receivers: [filewatcher]
+      processors: []
+      exporters: [debug]
