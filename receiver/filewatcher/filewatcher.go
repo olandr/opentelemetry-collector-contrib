@@ -2,12 +2,10 @@ package filewatcher
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/fsnotify/fsnotify"
-	"github.com/helshabini/fsbroker"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -47,9 +45,8 @@ func createLogs(name, operation string) plog.Logs {
 	return logs
 }
 
-func (fsn *FileWatcher) watch(ctx context.Context, broker *fsbroker.FSBroker) {
-	broker.Start()
-	defer broker.Stop()
+func (fsn *FileWatcher) watch(ctx context.Context, watcher *fsnotify.Watcher) {
+	defer watcher.Close()
 	for {
 		select {
 		case <-ctx.Done():
@@ -57,33 +54,27 @@ func (fsn *FileWatcher) watch(ctx context.Context, broker *fsbroker.FSBroker) {
 		case _, ok := <-fsn.done:
 			_ = ok
 			return
-		case err := <-broker.Error():
+		case err := <-watcher.Errors:
 			log.Printf("an error has occurred: %v", err)
 			return
-		case action := <-broker.Next():
-			fsn.logger.Debug("action", zap.String("name", action.Subject.Path), zap.String("operation", action.Type.String()))
-			logs := createLogs(action.Subject.Path, action.Type.String())
+		case action := <-watcher.Events:
+			fsn.logger.Debug("action", zap.String("name", action.Name), zap.String("operation", action.Op.String()))
+			logs := createLogs(action.Name, action.Op.String())
 			fsn.consumer.ConsumeLogs(ctx, logs)
 		}
 	}
 }
 
 func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
-	config := fsbroker.DefaultFSConfig()
-	broker, err := fsbroker.NewFSBroker(config)
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatalf("error creating FS Broker: %v", err)
 	}
-	// FIXME: for now we do not care about NoOps (creates/write on deleted files). Decide if this is the intended behaviour.
-	broker.Filter = func(action *fsbroker.FSAction) bool { return action.Type != fsbroker.NoOp }
-	if fsn.done != nil {
-		return errors.New("filewatcher is already running")
-	}
+	fsn.watcher = watcher
 	fsn.done = make(chan struct{})
-
-	go fsn.watch(ctx, broker)
+	go fsn.watch(ctx, fsn.watcher)
 	for _, f := range fsn.include {
-		err = broker.AddRecursiveWatch(f)
+		err = watcher.Add(f)
 	}
 	return err
 }
