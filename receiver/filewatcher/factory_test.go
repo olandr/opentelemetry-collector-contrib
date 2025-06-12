@@ -12,10 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestCanCreateNewFactort(t *testing.T) {
-
-}
-
 func TestCanCreateLogsReceiver(t *testing.T) {
 	// Arrange
 	receiverConfig := &NotifyReceiverConfig{
@@ -41,7 +37,7 @@ func TestCanCreateLogsReceiver(t *testing.T) {
 	require.Equal(t, expectedLogsReceiver, actualLogsReceiver)
 }
 
-func TestCanStartingLogsReceiver(t *testing.T) {
+func TestCanStartShutdownLogsReceiver(t *testing.T) {
 	// Arrange
 	receiverConfig := &NotifyReceiverConfig{
 		Include: []string{TEST_INCLUDE_PATH},
@@ -55,4 +51,5 @@ func TestCanStartingLogsReceiver(t *testing.T) {
 
 	// Assert
 	require.NoError(t, actualLogsReceiver.Start(context.Background(), componenttest.NewNopHost()))
+	require.NoError(t, actualLogsReceiver.Shutdown(context.Background()))
 }
