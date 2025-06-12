@@ -9,16 +9,16 @@ import (
 
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/charmbracelet/log"
-	"github.com/fsnotify/fsnotify"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/stretchr/testify/require"
+	"github.com/syncthing/notify"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
 type FactoryTestCase struct {
 	Name     string
-	Expected *FSNotifyReceiverConfig
+	Expected *NotifyReceiverConfig
 	Error    error
 }
 
@@ -35,7 +35,7 @@ func eventuallyExpect(t *testing.T, expected int, actual int) {
 		"expected %d, but got %d", expected, actual)
 }
 
-func TestFSNotifyReveiver(t *testing.T) {
+func TestNotifyReveiverSimple(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
 	logs, actualLogsConsumer := testSetup(t, TEST_INCLUDE_PATH, TEST_EXCLUDE_PATH)
@@ -51,14 +51,14 @@ func TestFSNotifyReveiver(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Create.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
 
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Write.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Write.String()))
 
 		f.Close()
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
@@ -67,7 +67,7 @@ func TestFSNotifyReveiver(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Remove.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Remove.String()))
 		time.Sleep(800 * time.Millisecond)
 
 		// Assert
@@ -80,7 +80,7 @@ func TestFSNotifyReveiver(t *testing.T) {
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
 
-func TestFSNotifyReveiverListenToNewDir(t *testing.T) {
+func TestNotifyReveiverListenToNewDir(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
 	// We want to only listen to the outer path, but add files to a dir within
@@ -97,8 +97,8 @@ func TestFSNotifyReveiverListenToNewDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, fsnotify.Create.String()))
-		time.Sleep(5000 * time.Millisecond)
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, notify.Create.String()))
+		time.Sleep(800 * time.Millisecond)
 
 		createFiles[tc] = fmt.Sprintf("%v/%v.txt", innerDir, gofakeit.LetterN(5))
 		t.Log("create", "file", createFiles[tc])
@@ -107,34 +107,33 @@ func TestFSNotifyReveiverListenToNewDir(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Create.String()))
-		time.Sleep(5000 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
+		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 		t.Log("write", "file", createFiles[tc])
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Write.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Write.String()))
 
 		f.Close()
-		time.Sleep(5000 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
+		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 		t.Log("remove", "file", createFiles[tc])
 		err = os.Remove(createFiles[tc])
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Remove.String()))
-		time.Sleep(5000 * time.Millisecond)
-
-		// Assert
-		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Remove.String()))
+		time.Sleep(800 * time.Millisecond)
 
 		err = os.Remove(innerDir)
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, fsnotify.Remove.String()))
-		time.Sleep(5000 * time.Millisecond)
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, notify.Remove.String()))
+		time.Sleep(800 * time.Millisecond)
+		// Assert
+		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 
 		for i, expected := range expectedLogsConsumer.AllLogs() {
 			actual := actualLogsConsumer.AllLogs()[i]
@@ -144,8 +143,7 @@ func TestFSNotifyReveiverListenToNewDir(t *testing.T) {
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
 
-// Error with provider fsbroker https://github.com/helshabini/fsbroker/issues/5
-func TestFSNotifyReveiverListenToExistingNestedDir(t *testing.T) {
+func TestNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
 	// We want to only listen to the outer path, but add files to a dir within
@@ -164,14 +162,14 @@ func TestFSNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Create.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
 
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Write.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Write.String()))
 
 		f.Close()
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
@@ -180,7 +178,7 @@ func TestFSNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Remove.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Remove.String()))
 		time.Sleep(800 * time.Millisecond)
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
@@ -193,8 +191,7 @@ func TestFSNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
 
-// Error with provider fsbroker: https://github.com/helshabini/fsbroker/issues/5
-func TestFSNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
+func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 	// Arrange
 	expectedLogsConsumer := new(consumertest.LogsSink)
 	// We want to only listen to the outer path, but add files to a dir within
@@ -210,7 +207,7 @@ func TestFSNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, fsnotify.Create.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, notify.Create.String()))
 		time.Sleep(800 * time.Millisecond)
 
 		createFiles[tc] = fmt.Sprintf("%v/%v.txt", TEST_INNER_PATH, gofakeit.LetterN(5))
@@ -220,14 +217,14 @@ func TestFSNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Create.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
 
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Write.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Write.String()))
 
 		f.Close()
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
@@ -236,14 +233,14 @@ func TestFSNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Remove.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Remove.String()))
 		time.Sleep(800 * time.Millisecond)
 
 		err = os.Remove(innerDir)
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, fsnotify.Remove.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, notify.Remove.String()))
 		time.Sleep(800 * time.Millisecond)
 
 		// Assert
@@ -306,7 +303,7 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 		}
 
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], fsnotify.Create.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
 
 		f.Close()
 
@@ -316,7 +313,7 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, fsnotify.Rename.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Rename.String()))
 
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 
@@ -324,7 +321,7 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, fsnotify.Remove.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Remove.String()))
 		time.Sleep(10 * time.Second) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 
 		// Assert
@@ -351,7 +348,7 @@ func TestRenameFileNTimes(t *testing.T) {
 		log.Fatal(err)
 	}
 	time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
-	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(oldName, fsnotify.Create.String()))
+	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(oldName, notify.Create.String()))
 
 	f.Close()
 	for range gofakeit.UintRange(5, 10) {
@@ -360,7 +357,7 @@ func TestRenameFileNTimes(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, fsnotify.Rename.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Rename.String()))
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 		oldName = newName
 	}
@@ -369,14 +366,14 @@ func TestRenameFileNTimes(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, fsnotify.Rename.String()))
+	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, notify.Rename.String()))
 	time.Sleep(800 * time.Millisecond)
 
 	err = os.Remove(orignalName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, fsnotify.Remove.String()))
+	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, notify.Remove.String()))
 	time.Sleep(800 * time.Millisecond)
 
 	// Assert

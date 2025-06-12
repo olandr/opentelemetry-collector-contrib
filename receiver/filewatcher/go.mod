@@ -10,6 +10,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.127.0
 	github.com/stretchr/testify v1.10.0
+	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	go.opentelemetry.io/collector/component v1.33.0
 	go.opentelemetry.io/collector/component/componenttest v0.127.0
 	go.opentelemetry.io/collector/confmap v1.33.0

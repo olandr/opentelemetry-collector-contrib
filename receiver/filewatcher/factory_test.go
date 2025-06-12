@@ -18,7 +18,7 @@ func TestCanCreateNewFactort(t *testing.T) {
 
 func TestCanCreateLogsReceiver(t *testing.T) {
 	// Arrange
-	receiverConfig := &FSNotifyReceiverConfig{
+	receiverConfig := &NotifyReceiverConfig{
 		Include: []string{TEST_INCLUDE_PATH},
 		Exclude: []string{TEST_EXCLUDE_PATH},
 	}
@@ -43,7 +43,7 @@ func TestCanCreateLogsReceiver(t *testing.T) {
 
 func TestCanStartingLogsReceiver(t *testing.T) {
 	// Arrange
-	receiverConfig := &FSNotifyReceiverConfig{
+	receiverConfig := &NotifyReceiverConfig{
 		Include: []string{TEST_INCLUDE_PATH},
 		Exclude: []string{TEST_EXCLUDE_PATH},
 	}

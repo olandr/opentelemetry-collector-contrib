@@ -20,6 +20,6 @@ func NewFactory() receiver.Factory {
 }
 
 func createLogsReceiver(_ context.Context, settings receiver.Settings, baseCfg component.Config, consumer consumer.Logs) (receiver.Logs, error) {
-	cfg := baseCfg.(*FSNotifyReceiverConfig)
-	return newfsNotify(cfg, consumer, settings)
+	cfg := baseCfg.(*NotifyReceiverConfig)
+	return newNotify(cfg, consumer, settings)
 }

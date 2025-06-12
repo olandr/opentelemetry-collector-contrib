@@ -12,7 +12,7 @@ import (
 
 type ConfigTestCase struct {
 	Name     string
-	Expected *FSNotifyReceiverConfig
+	Expected *NotifyReceiverConfig
 	Error    error
 }
 
@@ -21,7 +21,7 @@ func TestFactoryCreate(t *testing.T) {
 	tests := []ConfigTestCase{
 		{
 			Name: "regular",
-			Expected: &FSNotifyReceiverConfig{
+			Expected: &NotifyReceiverConfig{
 				Include: []string{TEST_INCLUDE_PATH},
 				Exclude: []string{TEST_EXCLUDE_PATH},
 			},
@@ -29,7 +29,7 @@ func TestFactoryCreate(t *testing.T) {
 		},
 		{
 			Name: "empty",
-			Expected: &FSNotifyReceiverConfig{
+			Expected: &NotifyReceiverConfig{
 				Include: []string{},
 				Exclude: []string{},
 			},
@@ -37,7 +37,7 @@ func TestFactoryCreate(t *testing.T) {
 		},
 		{
 			Name: "problematic",
-			Expected: &FSNotifyReceiverConfig{
+			Expected: &NotifyReceiverConfig{
 				Include: []string{fmt.Sprintf("%v/-#{:,", TEST_PATH)},
 				Exclude: []string{},
 			},
