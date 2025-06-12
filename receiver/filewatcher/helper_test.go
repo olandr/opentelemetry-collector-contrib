@@ -1,6 +1,7 @@
 package filewatcher
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,14 +15,16 @@ import (
 )
 
 var (
-	TEST_PATH         = "testdata"
-	TEST_CONFIG_PATH  = "config.yaml"
-	TEST_INCLUDE_PATH = "testdata/include"
-	TEST_EXCLUDE_PATH = "testdata/exclude"
-	TEST_INNER_PATH   = "testdata/include/inner"
+	TEST_PATH                   = "testdata"
+	TEST_CONFIG_PATH            = "config.yaml"
+	TEST_INCLUDE_PATH           = "testdata/include"
+	TEST_EXCLUDE_PATH           = "testdata/exclude"
+	TEST_INCLUDE_RECURSIVE_PATH = "testdata/include/..."
+	TEST_EXCLUDE_RECURSIVE_PATH = "testdata/exclude/..."
+	TEST_INNER_PATH             = "testdata/include/inner"
 )
 
-func testSetup(t *testing.T, include, exclude string) (receiver.Logs, *consumertest.LogsSink) {
+func testSetup(t *testing.T) (receiver.Logs, *consumertest.LogsSink, string) {
 	configFile, _ := confmaptest.LoadConf(TEST_CONFIG_PATH)
 	receivers, _ := configFile.Sub("receivers")
 	filewatcher, err := receivers.Sub("filewatcher/regular")
@@ -34,6 +37,10 @@ func testSetup(t *testing.T, include, exclude string) (receiver.Logs, *consumert
 	logs, err := createLogsReceiver(t.Context(), settings, config, testLogsConsumer)
 	require.NoError(t, err)
 	require.NoError(t, logs.Start(t.Context(), componenttest.NewNopHost()))
-	// FIXME: this sleep is to handle start-up time, maybe there is a smarter way to do it?
-	return logs, testLogsConsumer
+
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	return logs, testLogsConsumer, wd
 }

@@ -22,8 +22,8 @@ func TestFactoryCreate(t *testing.T) {
 		{
 			Name: "regular",
 			Expected: &NotifyReceiverConfig{
-				Include: []string{TEST_INCLUDE_PATH},
-				Exclude: []string{TEST_EXCLUDE_PATH},
+				Include: []string{TEST_INCLUDE_RECURSIVE_PATH},
+				Exclude: []string{TEST_EXCLUDE_RECURSIVE_PATH},
 			},
 			Error: nil,
 		},
