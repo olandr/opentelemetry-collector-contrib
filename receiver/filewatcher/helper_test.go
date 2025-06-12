@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receivertest"
@@ -21,12 +22,13 @@ var (
 )
 
 func testSetup(t *testing.T, include, exclude string) (receiver.Logs, *consumertest.LogsSink) {
-	testLogsConsumer := new(consumertest.LogsSink)
+	configFile, _ := confmaptest.LoadConf(TEST_CONFIG_PATH)
+	receivers, _ := configFile.Sub("receivers")
+	filewatcher, err := receivers.Sub("filewatcher/regular")
+	config := NewFactory().CreateDefaultConfig()
+	filewatcher.Unmarshal(config)
 
-	config := &FSNotifyReceiverConfig{
-		Include: []string{include},
-		Exclude: []string{exclude},
-	}
+	testLogsConsumer := new(consumertest.LogsSink)
 	settings := receivertest.NewNopSettings(component.MustNewType("filewatcher"))
 	settings.Logger = zap.NewNop()
 	logs, err := createLogsReceiver(t.Context(), settings, config, testLogsConsumer)

@@ -1,7 +1,7 @@
 receivers:
   filewatcher/regular:
-    include: ["testdata/include"]
-    exclude: ["testdata/exclude"]
+    include: ["testdata/include/..."]
+    exclude: ["testdata/exclude/..."]
 
   filewatcher/empty:
   filewatcher/problematic:
