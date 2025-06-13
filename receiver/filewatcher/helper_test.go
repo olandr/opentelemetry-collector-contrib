@@ -5,7 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/brianvoe/gofakeit/v7"
+	"github.com/charmbracelet/log"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
@@ -27,7 +30,26 @@ var (
 	TEST_INNER_PATH             = "testdata/include/inner"
 )
 
-func testSetup(t *testing.T) (receiver.Logs, *consumertest.LogsSink, string) {
+func testSetup(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, string) {
+
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	test_destination := filepath.Join(wd, TEST_INCLUDE_PATH, gofakeit.LetterN(5))
+	err = os.Mkdir(test_destination, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if should_create_inner_dir {
+		err = os.Mkdir(filepath.Join(test_destination, "inner"), 0777)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	// this sleep is needed because any events (CREATE, WRITE or otherwise) made on the test_destination dir is NOT to be caught by the log receiver.
+	time.Sleep(1000 * time.Millisecond)
 	configFile, _ := confmaptest.LoadConf(TEST_CONFIG_PATH)
 	receivers, _ := configFile.Sub("receivers")
 	filewatcher, err := receivers.Sub("filewatcher/regular")
@@ -41,11 +63,15 @@ func testSetup(t *testing.T) (receiver.Logs, *consumertest.LogsSink, string) {
 	require.NoError(t, err)
 	require.NoError(t, logs.Start(t.Context(), componenttest.NewNopHost()))
 
-	wd, err := os.Getwd()
+	return logs, testLogsConsumer, test_destination
+}
+
+func testTeardown(t *testing.T, test_destination string) {
+	t.Logf("removing test_destination: %v", test_destination)
+	err := os.RemoveAll(test_destination)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	return logs, testLogsConsumer, wd
 }
 
 // logsToMap will take a list of logs and each LogRecord to a map which will count distinct events (up to path and operation). This is useful if testing the out-of-order arrival of log records between expected and actual consumers. Solves issue with ignoring order.
