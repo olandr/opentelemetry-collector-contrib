@@ -49,7 +49,7 @@ func testSetup(t *testing.T) (receiver.Logs, *consumertest.LogsSink, string) {
 }
 
 // logsToMap will take a list of logs and each LogRecord to a map which will count distinct events (up to path and operation). This is useful if testing the out-of-order arrival of log records between expected and actual consumers. Solves issue with ignoring order.
-func logsToMap(t *testing.T, logs []plog.Logs) map[string]uint {
+func logsToMap(t *testing.T, logs []plog.Logs, msgs ...interface{}) map[string]uint {
 	ret := make(map[string]uint)
 	for _, log := range logs {
 		for i := 0; i < log.ResourceLogs().Len(); i++ {
@@ -57,7 +57,7 @@ func logsToMap(t *testing.T, logs []plog.Logs) map[string]uint {
 				event, _ := log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0).Attributes().Get("event")
 				operation, _ := log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0).Attributes().Get("operation")
 				hash := fmt.Sprintf("%s-%s", filepath.Base(event.AsString()), operation.AsString())
-				t.Logf("hashing %v", hash)
+				t.Logf("%s, hash=%v", msgs, hash)
 
 				ret[hash] += 1
 			}

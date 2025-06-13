@@ -61,7 +61,7 @@ func TestNotifyReveiverSimple(t *testing.T) {
 
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
 
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
@@ -117,7 +117,7 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
 
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
@@ -162,7 +162,7 @@ func TestNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
 
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
@@ -222,7 +222,7 @@ func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
 
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
@@ -251,7 +251,7 @@ func TestDeletingQuicklyIgnoresNoOp(t *testing.T) {
 		// Assert
 		eventuallyExpect(t, 0, actualLogsConsumer.LogRecordCount())
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
 
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
@@ -297,7 +297,7 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
@@ -348,6 +348,6 @@ func TestRenameFileNTimes(t *testing.T) {
 
 	// Assert
 	eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-	require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+	require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
