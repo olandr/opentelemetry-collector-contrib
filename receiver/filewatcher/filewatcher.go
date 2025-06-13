@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/charmbracelet/log"
 	"github.com/syncthing/notify"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -51,7 +50,6 @@ func createLogs(name, operation string) plog.Logs {
 
 func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInfo)) {
 	defer notify.Stop(fsn.watcher)
-	log.SetLevel(log.DebugLevel)
 	for {
 		select {
 		case <-ctx.Done():

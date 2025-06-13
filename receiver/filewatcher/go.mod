@@ -7,7 +7,6 @@ toolchain go1.24.3
 require (
 	github.com/brianvoe/gofakeit/v7 v7.2.1
 	github.com/charmbracelet/log v0.4.2
-	github.com/fsnotify/fsnotify v1.9.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.127.0
 	github.com/stretchr/testify v1.10.0
 	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465

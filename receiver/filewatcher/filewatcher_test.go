@@ -45,7 +45,6 @@ func TestNotifyReveiverSimple(t *testing.T) {
 	createFiles := make([]string, TEST_FILES)
 	for tc := range TEST_FILES {
 		createFiles[tc] = fmt.Sprintf("%v/%v/%v.txt", wd, TEST_INCLUDE_PATH, gofakeit.LetterN(5))
-		t.Log("test-case", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatal(err)
@@ -72,10 +71,8 @@ func TestNotifyReveiverSimple(t *testing.T) {
 
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		for i, expected := range expectedLogsConsumer.AllLogs() {
-			actual := actualLogsConsumer.AllLogs()[i]
-			assertLogRecords(t, expected, actual)
-		}
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
@@ -92,7 +89,6 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 	for tc := range TEST_FILES {
 		innerDir := fmt.Sprintf("%v/%v/%v", wd, TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 
-		t.Log("create", "dir", innerDir)
 		err := os.Mkdir(innerDir, 0777)
 		if err != nil {
 			log.Fatal(err)
@@ -101,7 +97,6 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 		time.Sleep(800 * time.Millisecond)
 
 		createFiles[tc] = fmt.Sprintf("%v/%v.txt", innerDir, gofakeit.LetterN(5))
-		t.Log("create", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatal(err)
@@ -109,7 +104,6 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 
 		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
-		t.Log("write", "file", createFiles[tc])
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
@@ -118,7 +112,6 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 
 		f.Close()
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
-		t.Log("remove", "file", createFiles[tc])
 		err = os.Remove(createFiles[tc])
 		if err != nil {
 			log.Fatal(err)
@@ -135,10 +128,8 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 
-		for i, expected := range expectedLogsConsumer.AllLogs() {
-			actual := actualLogsConsumer.AllLogs()[i]
-			assertLogRecords(t, expected, actual)
-		}
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
@@ -156,7 +147,6 @@ func TestNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 
 		time.Sleep(800 * time.Millisecond)
 		createFiles[tc] = fmt.Sprintf("%v/%v/%v.txt", wd, TEST_INNER_PATH, gofakeit.LetterN(5))
-		t.Log("test-case", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatal(err)
@@ -183,10 +173,8 @@ func TestNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 
-		for i, expected := range expectedLogsConsumer.AllLogs() {
-			actual := actualLogsConsumer.AllLogs()[i]
-			assertLogRecords(t, expected, actual)
-		}
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
@@ -211,7 +199,6 @@ func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 		time.Sleep(800 * time.Millisecond)
 
 		createFiles[tc] = fmt.Sprintf("%v/%v.txt", TEST_INNER_PATH, gofakeit.LetterN(5))
-		t.Log("test-case", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatal(err)
@@ -246,10 +233,8 @@ func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 
-		for i, expected := range expectedLogsConsumer.AllLogs() {
-			actual := actualLogsConsumer.AllLogs()[i]
-			assertLogRecords(t, expected, actual)
-		}
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
@@ -263,7 +248,6 @@ func TestDeletingQuicklyIgnoresNoOp(t *testing.T) {
 	createFiles := make([]string, TEST_FILES)
 	for tc := range TEST_FILES {
 		createFiles[tc] = fmt.Sprintf("%v/%v/%v.txt", wd, TEST_INCLUDE_PATH, gofakeit.LetterN(5))
-		t.Log("test-case", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatal(err)
@@ -278,10 +262,8 @@ func TestDeletingQuicklyIgnoresNoOp(t *testing.T) {
 		// Assert
 		eventuallyExpect(t, 0, actualLogsConsumer.LogRecordCount())
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		for i, expected := range expectedLogsConsumer.AllLogs() {
-			actual := actualLogsConsumer.AllLogs()[i]
-			assertLogRecords(t, expected, actual)
-		}
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
+
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
@@ -295,7 +277,6 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 	createFiles := make([]string, TEST_FILES)
 	for tc := range TEST_FILES {
 		createFiles[tc] = fmt.Sprintf("%v/%v/%v.txt", wd, TEST_INCLUDE_PATH, gofakeit.LetterN(5))
-		t.Log("test-case", "file", createFiles[tc])
 		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatal(err)
@@ -312,6 +293,7 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 			log.Fatal(err)
 		}
 
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Rename.String()))
 		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Rename.String()))
 
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
@@ -320,15 +302,18 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Rename.String()))
 		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Remove.String()))
-		time.Sleep(10 * time.Second) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
+		time.Sleep(1000 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 
+		t.Log("exp")
+		logsToMap(t, expectedLogsConsumer.AllLogs())
+		t.Log("act")
+		logsToMap(t, actualLogsConsumer.AllLogs())
 		// Assert
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		for i, expected := range expectedLogsConsumer.AllLogs() {
-			actual := actualLogsConsumer.AllLogs()[i]
-			assertLogRecords(t, expected, actual)
-		}
+
+		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
@@ -341,7 +326,6 @@ func TestRenameFileNTimes(t *testing.T) {
 	// Act
 	orignalName := fmt.Sprintf("%v/%v/%v.txt", wd, TEST_INCLUDE_PATH, gofakeit.LetterN(5))
 	oldName := orignalName
-	t.Log("test-case", "file", oldName)
 	f, err := os.OpenFile(oldName, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -357,6 +341,7 @@ func TestRenameFileNTimes(t *testing.T) {
 			log.Fatal(err)
 		}
 		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Rename.String()))
+		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(oldName, notify.Rename.String()))
 		time.Sleep(800 * time.Millisecond) // Sleeping here because the filewatcher (or something) does not like when you do things quickly --- seems to not be emitting anything.
 		oldName = newName
 	}
@@ -366,20 +351,19 @@ func TestRenameFileNTimes(t *testing.T) {
 	}
 
 	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, notify.Rename.String()))
+	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(oldName, notify.Rename.String()))
 	time.Sleep(800 * time.Millisecond)
 
 	err = os.Remove(orignalName)
 	if err != nil {
 		log.Fatal(err)
 	}
+	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, notify.Rename.String()))
 	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, notify.Remove.String()))
 	time.Sleep(800 * time.Millisecond)
 
 	// Assert
 	eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-	for i, expected := range expectedLogsConsumer.AllLogs() {
-		actual := actualLogsConsumer.AllLogs()[i]
-		assertLogRecords(t, expected, actual)
-	}
+	require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs()), logsToMap(t, actualLogsConsumer.AllLogs()))
 	require.NoError(t, logs.Shutdown(context.Background()))
 }
