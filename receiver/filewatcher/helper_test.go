@@ -91,3 +91,9 @@ func logsToMap(t *testing.T, logs []plog.Logs, msgs ...interface{}) map[string]u
 	}
 	return ret
 }
+
+func consumeLogs(t *testing.T, consumer *consumertest.LogsSink, logs []plog.Logs) {
+	for _, log := range logs {
+		consumer.ConsumeLogs(t.Context(), log)
+	}
+}

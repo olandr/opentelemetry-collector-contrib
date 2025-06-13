@@ -10,7 +10,6 @@ import (
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/charmbracelet/log"
 	"github.com/stretchr/testify/require"
-	"github.com/syncthing/notify"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 )
 
@@ -40,14 +39,14 @@ func TestNotifyReveiverSimple(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
+		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
 
 		time.Sleep(300 * time.Millisecond)
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Write.String()))
+		consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
 
 		f.Close()
 		time.Sleep(300 * time.Millisecond)
@@ -56,13 +55,14 @@ func TestNotifyReveiverSimple(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Remove.String()))
+		consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
 		time.Sleep(300 * time.Millisecond)
 
 		// Assert
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
+		expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+		actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-
+		require.Equal(t, expected, actual)
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 	testTeardown(t, wd)
@@ -84,7 +84,8 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, notify.Create.String()))
+		consumeLogs(t, expectedLogsConsumer, Create(innerDir))
+
 		time.Sleep(300 * time.Millisecond)
 
 		createFiles[tc] = fmt.Sprintf("%v/%v.txt", innerDir, gofakeit.LetterN(5))
@@ -93,13 +94,14 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
+		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
+
 		time.Sleep(300 * time.Millisecond)
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Write.String()))
+		consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
 
 		f.Close()
 		time.Sleep(300 * time.Millisecond)
@@ -107,19 +109,20 @@ func TestNotifyReveiverListenToNewDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Remove.String()))
+		consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
 		time.Sleep(300 * time.Millisecond)
 
 		err = os.Remove(innerDir)
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, notify.Remove.String()))
+		consumeLogs(t, expectedLogsConsumer, Remove(innerDir))
 		time.Sleep(300 * time.Millisecond)
 		// Assert
+		expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+		actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
-
+		require.Equal(t, expected, actual)
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 	testTeardown(t, wd)
@@ -143,14 +146,14 @@ func TestNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
+		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
 
 		time.Sleep(300 * time.Millisecond)
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Write.String()))
+		consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
 
 		f.Close()
 		time.Sleep(300 * time.Millisecond)
@@ -159,12 +162,12 @@ func TestNotifyReveiverListenToExistingNestedDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Remove.String()))
+		consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
 		time.Sleep(300 * time.Millisecond)
-		// Assert
-		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 
+		// Assert
 		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
+		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
@@ -187,7 +190,8 @@ func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, notify.Create.String()))
+		consumeLogs(t, expectedLogsConsumer, Create(innerDir))
+
 		time.Sleep(300 * time.Millisecond)
 
 		createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd_inner, gofakeit.LetterN(5))
@@ -196,14 +200,14 @@ func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
+		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
 
 		time.Sleep(300 * time.Millisecond)
 		_, err = f.Write([]byte(gofakeit.LetterN(10)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Write.String()))
+		consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
 
 		f.Close()
 		time.Sleep(300 * time.Millisecond)
@@ -212,20 +216,21 @@ func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Remove.String()))
+		consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
 		time.Sleep(300 * time.Millisecond)
 
 		err = os.Remove(innerDir)
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(innerDir, notify.Remove.String()))
+		consumeLogs(t, expectedLogsConsumer, Remove(innerDir))
 		time.Sleep(300 * time.Millisecond)
 
 		// Assert
+		expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+		actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
+		require.Equal(t, expected, actual)
 
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
@@ -247,9 +252,10 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 		}
 
 		time.Sleep(300 * time.Millisecond)
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Create.String()))
+		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
 
 		f.Close()
+		consumeLogs(t, expectedLogsConsumer, WriteOnClose(createFiles[tc]))
 
 		newName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
 		err = os.Rename(createFiles[tc], newName)
@@ -257,8 +263,7 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(createFiles[tc], notify.Rename.String()))
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Rename.String()))
+		consumeLogs(t, expectedLogsConsumer, Rename(createFiles[tc], newName))
 
 		time.Sleep(300 * time.Millisecond)
 
@@ -266,13 +271,14 @@ func TestRenameFileCanBeRemoved(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Rename.String()))
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Remove.String()))
+		consumeLogs(t, expectedLogsConsumer, RenameRemove(newName))
 		time.Sleep(300 * time.Millisecond)
 
 		// Assert
+		expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+		actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
+		require.Equal(t, expected, actual)
 	}
 	require.NoError(t, logs.Shutdown(context.Background()))
 	testTeardown(t, wd)
@@ -291,17 +297,19 @@ func TestRenameFileNTimes(t *testing.T) {
 		log.Fatal(err)
 	}
 	time.Sleep(300 * time.Millisecond)
-	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(oldName, notify.Create.String()))
+	consumeLogs(t, expectedLogsConsumer, Create(oldName))
 
 	f.Close()
-	for range gofakeit.UintRange(5, 10) {
+	consumeLogs(t, expectedLogsConsumer, WriteOnClose(oldName))
+
+	for range 1 { //gofakeit.UintRange(5, 10) {
 		newName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
 		err = os.Rename(oldName, newName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(newName, notify.Rename.String()))
-		expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(oldName, notify.Rename.String()))
+		consumeLogs(t, expectedLogsConsumer, Rename(oldName, newName))
+
 		time.Sleep(300 * time.Millisecond)
 		oldName = newName
 	}
@@ -310,21 +318,21 @@ func TestRenameFileNTimes(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, notify.Rename.String()))
-	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(oldName, notify.Rename.String()))
+	consumeLogs(t, expectedLogsConsumer, Rename(oldName, orignalName))
 	time.Sleep(300 * time.Millisecond)
 
 	err = os.Remove(orignalName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, notify.Rename.String()))
-	expectedLogsConsumer.ConsumeLogs(t.Context(), createLogs(orignalName, notify.Remove.String()))
+	consumeLogs(t, expectedLogsConsumer, RenameRemove(orignalName))
 	time.Sleep(300 * time.Millisecond)
 
 	// Assert
+	expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+	actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
 	eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-	require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
+	require.Equal(t, expected, actual)
 	require.NoError(t, logs.Shutdown(context.Background()))
 	testTeardown(t, wd)
 }

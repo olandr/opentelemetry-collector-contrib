@@ -1,5 +1,5 @@
-//go:build darwin && !kqueue && cgo && !ios
-// +build darwin,!kqueue,cgo,!ios
+//go:build linux
+// +build linux
 
 package filewatcher
 
@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/syncthing/notify"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -14,10 +15,11 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
+	"golang.org/x/sys/unix"
 )
 
 var (
-	EVENTS_TO_WATCH = notify.All
+	EVENTS_TO_WATCH = notify.InCreate | notify.InCloseWrite | notify.InDelete | notify.InMovedTo | notify.InMovedFrom
 )
 
 type FileWatcher struct {
@@ -63,6 +65,7 @@ func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInf
 		case event := <-watcher:
 			fsn.logger.Debug("event", zap.String("name", event.Path()), zap.String("operation", event.Event().String()))
 			logs := createLogs(event.Path(), event.Event().String())
+			log.Info("sending", "event", event.Event().String(), "sys", event.Sys().(*unix.InotifyEvent).Mask)
 			fsn.consumer.ConsumeLogs(ctx, logs)
 		}
 	}
