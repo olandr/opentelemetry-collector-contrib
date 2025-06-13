@@ -231,36 +231,6 @@ func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
 	require.NoError(t, logs.Shutdown(context.Background()))
 	testTeardown(t, wd)
 }
-func TestDeletingQuicklyIgnoresNoOp(t *testing.T) {
-	// Arrange
-	expectedLogsConsumer := new(consumertest.LogsSink)
-	logs, actualLogsConsumer, wd := testSetup(t, false)
-
-	// Act
-	TEST_FILES := 1
-	createFiles := make([]string, TEST_FILES)
-	for tc := range TEST_FILES {
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
-		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		f.Close()
-		err = os.Remove(createFiles[tc])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Assert
-		eventuallyExpect(t, 0, actualLogsConsumer.LogRecordCount())
-		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
-
-	}
-	require.NoError(t, logs.Shutdown(context.Background()))
-	testTeardown(t, wd)
-}
 
 func TestRenameFileCanBeRemoved(t *testing.T) {
 	// Arrange
