@@ -66,7 +66,7 @@ func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInf
 }
 
 func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
-	fsn.watcher = make(chan notify.EventInfo, 1)
+	fsn.watcher = make(chan notify.EventInfo, 20)
 	fsn.done = make(chan struct{})
 	go fsn.watch(ctx, fsn.watcher)
 	var err error
