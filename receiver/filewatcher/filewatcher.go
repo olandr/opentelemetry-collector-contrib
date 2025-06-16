@@ -1,6 +1,3 @@
-//go:build darwin && !kqueue && cgo && !ios
-// +build darwin,!kqueue,cgo,!ios
-
 package filewatcher
 
 import (
@@ -14,10 +11,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
-)
-
-var (
-	EVENTS_TO_WATCH = notify.All
 )
 
 type FileWatcher struct {
