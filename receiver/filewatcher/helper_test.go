@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/receiver"
@@ -64,11 +63,10 @@ func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *con
 	}
 	// this sleep is needed because any events (CREATE, WRITE or otherwise) made on the test_destination dir is NOT to be caught by the log receiver.
 	time.Sleep(1000 * time.Millisecond)
-	configFile, _ := confmaptest.LoadConf(TEST_CONFIG_PATH)
-	receivers, _ := configFile.Sub("receivers")
-	filewatcher, err := receivers.Sub("filewatcher/regular")
-	config := NewFactory().CreateDefaultConfig()
-	filewatcher.Unmarshal(config)
+
+	include_path := fmt.Sprintf("%v/...", test_destination)
+	config := createDefaultConfig()
+	config.(*NotifyReceiverConfig).Include = []string{include_path}
 
 	testLogsConsumer := new(consumertest.LogsSink)
 	settings := receivertest.NewNopSettings(component.MustNewType("filewatcher"))

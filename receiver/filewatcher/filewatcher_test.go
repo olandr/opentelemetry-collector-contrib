@@ -32,6 +32,7 @@ func TestFilewatcherReceiver(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 	TEST_RUNS := gofakeit.UintRange(5, 10)
 	t.Run("can do simple crud", func(t *testing.T) {
+		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		logs, actualLogsConsumer, wd := beforeEach(t, false)
@@ -59,6 +60,7 @@ func TestFilewatcherReceiver(t *testing.T) {
 	})
 
 	t.Run("can watch a newly created dir", func(t *testing.T) {
+		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		// We want to only listen to the outer path, but add files to a dir within
@@ -87,6 +89,7 @@ func TestFilewatcherReceiver(t *testing.T) {
 	})
 
 	t.Run("can watch existing dir", func(t *testing.T) {
+		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		// We want to only listen to the outer path, but add files to a dir within
@@ -114,6 +117,7 @@ func TestFilewatcherReceiver(t *testing.T) {
 	})
 
 	t.Run("can watch to nested dir", func(t *testing.T) {
+		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		// We want to only listen to the outer path, but add files to a dir within
@@ -147,6 +151,7 @@ func TestFilewatcherReceiver(t *testing.T) {
 	})
 
 	t.Run("renamed file is removed", func(t *testing.T) {
+		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		logs, actualLogsConsumer, wd := beforeEach(t, false)
@@ -173,6 +178,7 @@ func TestFilewatcherReceiver(t *testing.T) {
 	})
 
 	t.Run(fmt.Sprintf("renaming a file %v times", TEST_RUNS), func(t *testing.T) {
+		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		logs, actualLogsConsumer, wd := beforeEach(t, false)
