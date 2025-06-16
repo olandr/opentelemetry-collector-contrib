@@ -30,7 +30,21 @@ var (
 	TEST_INNER_PATH             = "testdata/include/inner"
 )
 
-func testSetup(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, string) {
+func beforeAll(t *testing.T, path string) {
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	test_destination_parent := filepath.Join(wd, path)
+
+	testTeardown(t, test_destination_parent)
+	err = os.Mkdir(test_destination_parent, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, string) {
 
 	wd, err := os.Getwd()
 	if err != nil {

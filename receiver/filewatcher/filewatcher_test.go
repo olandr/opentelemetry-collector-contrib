@@ -1,14 +1,15 @@
+//go:build darwin && !kqueue && cgo && !ios
+// +build darwin,!kqueue,cgo,!ios
+
 package filewatcher
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
-	"github.com/charmbracelet/log"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 )
@@ -20,319 +21,183 @@ type FactoryTestCase struct {
 }
 
 func eventuallyExpect(t *testing.T, expected int, actual int) {
+	time.Sleep(300 * time.Millisecond)
 	require.Eventually(t, func() bool { return expected == actual }, 10*time.Second, 5*time.Millisecond,
 		"expected %d, but got %d", expected, actual)
 }
 
-func TestNotifyReveiverSimple(t *testing.T) {
-	// Arrange
-	expectedLogsConsumer := new(consumertest.LogsSink)
-	logs, actualLogsConsumer, wd := testSetup(t, false)
+func TestFilewatcherReceiver(t *testing.T) {
+	beforeAll(t, TEST_INCLUDE_PATH)
 
-	// Act
-	TEST_FILES := 1
-	createFiles := make([]string, TEST_FILES)
-	for tc := range TEST_FILES {
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
-		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatal(err)
+	time.Sleep(300 * time.Millisecond)
+	TEST_RUNS := gofakeit.UintRange(5, 10)
+	t.Run("can do simple crud", func(t *testing.T) {
+		// Arrange
+		expectedLogsConsumer := new(consumertest.LogsSink)
+		logs, actualLogsConsumer, wd := beforeEach(t, false)
+
+		// Act
+		TEST_FILES := 1
+		createFiles := make([]string, TEST_FILES)
+		for tc := range TEST_FILES {
+
+			createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
+			consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
+
+			// Assert
+			time.Sleep(300 * time.Millisecond)
+
+			expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+			actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
+			eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
+			require.Equal(t, expected, actual)
 		}
+		require.NoError(t, logs.Shutdown(context.Background()))
+		testTeardown(t, wd)
+	})
 
-		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
-
+	t.Run("can watch a newly created dir", func(t *testing.T) {
+		// Arrange
+		expectedLogsConsumer := new(consumertest.LogsSink)
+		// We want to only listen to the outer path, but add files to a dir within
+		logs, actualLogsConsumer, wd := beforeEach(t, false)
 		time.Sleep(300 * time.Millisecond)
-		_, err = f.Write([]byte(gofakeit.LetterN(10)))
-		if err != nil {
-			log.Fatal(err)
+		// Act
+		createFiles := make([]string, TEST_RUNS)
+		for tc := range TEST_RUNS {
+			innerDir := fmt.Sprintf("%v/%v", wd, gofakeit.LetterN(5))
+			consumeLogs(t, expectedLogsConsumer, CreateDir(innerDir))
+			createFiles[tc] = fmt.Sprintf("%v/%v.txt", innerDir, gofakeit.LetterN(5))
+			consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Remove(innerDir))
+
+			// Assert
+			time.Sleep(300 * time.Millisecond)
+			expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+			actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
+			eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
+			require.Equal(t, expected, actual)
 		}
-		consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
+		require.NoError(t, logs.Shutdown(context.Background()))
+		testTeardown(t, wd)
+	})
 
-		f.Close()
-		time.Sleep(300 * time.Millisecond)
+	t.Run("can watch existing dir", func(t *testing.T) {
+		// Arrange
+		expectedLogsConsumer := new(consumertest.LogsSink)
+		// We want to only listen to the outer path, but add files to a dir within
+		logs, actualLogsConsumer, wd := beforeEach(t, true)
+		wd_inner := fmt.Sprintf("%v/inner", wd)
+		// Act
+		TEST_FILES := 1
+		createFiles := make([]string, TEST_FILES)
+		for tc := range TEST_FILES {
+			time.Sleep(300 * time.Millisecond)
+			createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd_inner, gofakeit.LetterN(5))
 
-		err = os.Remove(createFiles[tc])
-		if err != nil {
-			log.Fatal(err)
+			consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
+
+			// Assert
+			time.Sleep(300 * time.Millisecond)
+			require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
+			eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
+
 		}
-		consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
-		time.Sleep(300 * time.Millisecond)
+		require.NoError(t, logs.Shutdown(context.Background()))
+		testTeardown(t, wd)
+	})
 
+	t.Run("can watch to nested dir", func(t *testing.T) {
+		// Arrange
+		expectedLogsConsumer := new(consumertest.LogsSink)
+		// We want to only listen to the outer path, but add files to a dir within
+		logs, actualLogsConsumer, wd := beforeEach(t, true)
+		wd_inner := fmt.Sprintf("%v/inner", wd)
+		// Act
+		TEST_FILES := 1
+		createFiles := make([]string, TEST_FILES)
+		for tc := range TEST_FILES {
+
+			innerDir := fmt.Sprintf("%v/%v", wd_inner, gofakeit.LetterN(5))
+			consumeLogs(t, expectedLogsConsumer, CreateDir(innerDir))
+
+			createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd_inner, gofakeit.LetterN(5))
+			consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, Remove(innerDir))
+
+			// Assert
+			time.Sleep(300 * time.Millisecond)
+
+			expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+			actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
+			eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
+			require.Equal(t, expected, actual)
+
+		}
+		require.NoError(t, logs.Shutdown(context.Background()))
+		testTeardown(t, wd)
+	})
+
+	t.Run("renamed file is removed", func(t *testing.T) {
+		// Arrange
+		expectedLogsConsumer := new(consumertest.LogsSink)
+		logs, actualLogsConsumer, wd := beforeEach(t, false)
+		// Act
+		createFiles := make([]string, TEST_RUNS)
+		for tc := range TEST_RUNS {
+			createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
+			consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
+			consumeLogs(t, expectedLogsConsumer, WriteOnClose(createFiles[tc]))
+
+			newName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
+			consumeLogs(t, expectedLogsConsumer, Rename(createFiles[tc], newName))
+			consumeLogs(t, expectedLogsConsumer, RenameRemove(newName))
+			// Assert
+			time.Sleep(300 * time.Millisecond)
+
+			expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+			actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
+			eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
+			require.Equal(t, expected, actual)
+		}
+		require.NoError(t, logs.Shutdown(context.Background()))
+		testTeardown(t, wd)
+	})
+
+	t.Run(fmt.Sprintf("renaming a file %v times", TEST_RUNS), func(t *testing.T) {
+		// Arrange
+		expectedLogsConsumer := new(consumertest.LogsSink)
+		logs, actualLogsConsumer, wd := beforeEach(t, false)
+
+		// Act
+		orignalName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
+		oldName := orignalName
+		consumeLogs(t, expectedLogsConsumer, Create(oldName))
+		consumeLogs(t, expectedLogsConsumer, WriteOnClose(oldName))
+
+		for range TEST_RUNS {
+			newName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
+			consumeLogs(t, expectedLogsConsumer, Rename(oldName, newName))
+			oldName = newName
+		}
+		consumeLogs(t, expectedLogsConsumer, Rename(oldName, orignalName))
+		consumeLogs(t, expectedLogsConsumer, RenameRemove(orignalName))
 		// Assert
+		time.Sleep(300 * time.Millisecond)
+
 		expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
 		actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
 		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
 		require.Equal(t, expected, actual)
-	}
-	require.NoError(t, logs.Shutdown(context.Background()))
-	testTeardown(t, wd)
-}
-
-func TestNotifyReveiverListenToNewDir(t *testing.T) {
-	// Arrange
-	expectedLogsConsumer := new(consumertest.LogsSink)
-	// We want to only listen to the outer path, but add files to a dir within
-	logs, actualLogsConsumer, wd := testSetup(t, false)
-	time.Sleep(300 * time.Millisecond)
-	// Act
-	TEST_FILES := 1
-	createFiles := make([]string, TEST_FILES)
-	for tc := range TEST_FILES {
-		innerDir := fmt.Sprintf("%v/%v", wd, gofakeit.LetterN(5))
-
-		err := os.Mkdir(innerDir, 0777)
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Create(innerDir))
-
-		time.Sleep(300 * time.Millisecond)
-
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", innerDir, gofakeit.LetterN(5))
-		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
-
-		time.Sleep(300 * time.Millisecond)
-		_, err = f.Write([]byte(gofakeit.LetterN(10)))
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
-
-		f.Close()
-		time.Sleep(300 * time.Millisecond)
-		err = os.Remove(createFiles[tc])
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
-		time.Sleep(300 * time.Millisecond)
-
-		err = os.Remove(innerDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Remove(innerDir))
-		time.Sleep(300 * time.Millisecond)
-		// Assert
-		expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
-		actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
-		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, expected, actual)
-	}
-	require.NoError(t, logs.Shutdown(context.Background()))
-	testTeardown(t, wd)
-}
-
-func TestNotifyReveiverListenToExistingNestedDir(t *testing.T) {
-	// Arrange
-	expectedLogsConsumer := new(consumertest.LogsSink)
-	// We want to only listen to the outer path, but add files to a dir within
-	logs, actualLogsConsumer, wd := testSetup(t, true)
-	wd_inner := fmt.Sprintf("%v/inner", wd)
-	// Act
-	TEST_FILES := 1
-	createFiles := make([]string, TEST_FILES)
-	for tc := range TEST_FILES {
-
-		time.Sleep(300 * time.Millisecond)
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd_inner, gofakeit.LetterN(5))
-		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
-
-		time.Sleep(300 * time.Millisecond)
-		_, err = f.Write([]byte(gofakeit.LetterN(10)))
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
-
-		f.Close()
-		time.Sleep(300 * time.Millisecond)
-
-		err = os.Remove(createFiles[tc])
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
-		time.Sleep(300 * time.Millisecond)
-
-		// Assert
-		require.Equal(t, logsToMap(t, expectedLogsConsumer.AllLogs(), "expected"), logsToMap(t, actualLogsConsumer.AllLogs(), "actual"))
-		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-
-	}
-	require.NoError(t, logs.Shutdown(context.Background()))
-	testTeardown(t, wd)
-}
-
-func TestNotifyReveiverListenToExistingNestedNewDir(t *testing.T) {
-	// Arrange
-	expectedLogsConsumer := new(consumertest.LogsSink)
-	// We want to only listen to the outer path, but add files to a dir within
-	logs, actualLogsConsumer, wd := testSetup(t, true)
-	wd_inner := fmt.Sprintf("%v/inner", wd)
-	// Act
-	TEST_FILES := 1
-	createFiles := make([]string, TEST_FILES)
-	for tc := range TEST_FILES {
-
-		innerDir := fmt.Sprintf("%v/%v", wd_inner, gofakeit.LetterN(5))
-		err := os.Mkdir(innerDir, 0777)
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Create(innerDir))
-
-		time.Sleep(300 * time.Millisecond)
-
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd_inner, gofakeit.LetterN(5))
-		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
-
-		time.Sleep(300 * time.Millisecond)
-		_, err = f.Write([]byte(gofakeit.LetterN(10)))
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Write(createFiles[tc]))
-
-		f.Close()
-		time.Sleep(300 * time.Millisecond)
-
-		err = os.Remove(createFiles[tc])
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Remove(createFiles[tc]))
-		time.Sleep(300 * time.Millisecond)
-
-		err = os.Remove(innerDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Remove(innerDir))
-		time.Sleep(300 * time.Millisecond)
-
-		// Assert
-		expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
-		actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
-		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, expected, actual)
-
-	}
-	require.NoError(t, logs.Shutdown(context.Background()))
-	testTeardown(t, wd)
-}
-
-func TestRenameFileCanBeRemoved(t *testing.T) {
-	// Arrange
-	expectedLogsConsumer := new(consumertest.LogsSink)
-	logs, actualLogsConsumer, wd := testSetup(t, false)
-	// Act
-	TEST_FILES := 5
-	createFiles := make([]string, TEST_FILES)
-	for tc := range TEST_FILES {
-		createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
-		f, err := os.OpenFile(createFiles[tc], os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		time.Sleep(300 * time.Millisecond)
-		consumeLogs(t, expectedLogsConsumer, Create(createFiles[tc]))
-
-		f.Close()
-		consumeLogs(t, expectedLogsConsumer, WriteOnClose(createFiles[tc]))
-
-		newName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
-		err = os.Rename(createFiles[tc], newName)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		consumeLogs(t, expectedLogsConsumer, Rename(createFiles[tc], newName))
-
-		time.Sleep(300 * time.Millisecond)
-
-		err = os.Remove(newName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, RenameRemove(newName))
-		time.Sleep(300 * time.Millisecond)
-
-		// Assert
-		expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
-		actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
-		eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-		require.Equal(t, expected, actual)
-	}
-	require.NoError(t, logs.Shutdown(context.Background()))
-	testTeardown(t, wd)
-}
-
-func TestRenameFileNTimes(t *testing.T) {
-	// Arrange
-	expectedLogsConsumer := new(consumertest.LogsSink)
-	logs, actualLogsConsumer, wd := testSetup(t, false)
-
-	// Act
-	orignalName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
-	oldName := orignalName
-	f, err := os.OpenFile(oldName, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	time.Sleep(300 * time.Millisecond)
-	consumeLogs(t, expectedLogsConsumer, Create(oldName))
-
-	f.Close()
-	consumeLogs(t, expectedLogsConsumer, WriteOnClose(oldName))
-
-	for range 1 { //gofakeit.UintRange(5, 10) {
-		newName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
-		err = os.Rename(oldName, newName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		consumeLogs(t, expectedLogsConsumer, Rename(oldName, newName))
-
-		time.Sleep(300 * time.Millisecond)
-		oldName = newName
-	}
-	err = os.Rename(oldName, orignalName)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	consumeLogs(t, expectedLogsConsumer, Rename(oldName, orignalName))
-	time.Sleep(300 * time.Millisecond)
-
-	err = os.Remove(orignalName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	consumeLogs(t, expectedLogsConsumer, RenameRemove(orignalName))
-	time.Sleep(300 * time.Millisecond)
-
-	// Assert
-	expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
-	actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
-	eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
-	require.Equal(t, expected, actual)
-	require.NoError(t, logs.Shutdown(context.Background()))
-	testTeardown(t, wd)
+		require.NoError(t, logs.Shutdown(context.Background()))
+		testTeardown(t, wd)
+	})
 }

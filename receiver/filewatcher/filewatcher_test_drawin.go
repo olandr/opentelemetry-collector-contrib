@@ -1,4 +1,5 @@
-//go:build linux
+//go:build darwin && !kqueue && cgo && !ios
+// +build darwin,!kqueue,cgo,!ios
 
 package filewatcher
 
@@ -58,31 +59,31 @@ func rename(from, to string) {
 
 func Create(name string) []plog.Logs {
 	defer create(name).Close()
-	return []plog.Logs{createLogs(name, notify.InCreate.String())}
+	return []plog.Logs{createLogs(name, notify.Create.String())}
 }
 
 func CreateDir(name string) []plog.Logs {
 	createDir(name)
 	return []plog.Logs{createLogs(name, notify.Create.String())}
 }
-
 func Remove(name string) []plog.Logs {
 	remove(name)
-	return []plog.Logs{createLogs(name, notify.InDelete.String())}
+	return []plog.Logs{createLogs(name, notify.Remove.String())}
 }
 func RenameRemove(name string) []plog.Logs {
-	return Remove(name)
+	remove(name)
+	return []plog.Logs{createLogs(name, notify.Rename.String()), createLogs(name, notify.Remove.String())}
 }
 func Write(name string) []plog.Logs {
 	defer write(name).Close()
-	return []plog.Logs{createLogs(name, notify.InCloseWrite.String())}
+	return []plog.Logs{createLogs(name, notify.Write.String())}
 }
 
 func WriteOnClose(name string) []plog.Logs {
-	return []plog.Logs{createLogs(name, notify.InCloseWrite.String())}
+	return nil
 }
 
 func Rename(from, to string) []plog.Logs {
 	rename(from, to)
-	return []plog.Logs{createLogs(from, notify.InMovedFrom.String()), createLogs(to, notify.InMovedTo.String())}
+	return []plog.Logs{createLogs(from, notify.Rename.String()), createLogs(to, notify.Rename.String())}
 }
