@@ -1,4 +1,4 @@
-package filewatcher
+package filewatchreceiver
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
-	"github.com/charmbracelet/log"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
@@ -32,33 +31,32 @@ var (
 func beforeAll(t *testing.T, path string) {
 	wd, err := os.Getwd()
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	test_destination_parent := filepath.Join(wd, path)
 
 	testTeardown(t, test_destination_parent)
-	err = os.Mkdir(test_destination_parent, 0777)
+	err = os.Mkdir(test_destination_parent, 0o777)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
 func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, string) {
-
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 	test_destination := filepath.Join(wd, TEST_INCLUDE_PATH, gofakeit.LetterN(5))
-	err = os.Mkdir(test_destination, 0777)
+	err = os.Mkdir(test_destination, 0o777)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	if should_create_inner_dir {
-		err = os.Mkdir(filepath.Join(test_destination, "inner"), 0777)
+		err = os.Mkdir(filepath.Join(test_destination, "inner"), 0o777)
 		if err != nil {
-			log.Fatal(err)
+			t.Fatal(err)
 		}
 	}
 	// this sleep is needed because any events (CREATE, WRITE or otherwise) made on the test_destination dir is NOT to be caught by the log receiver.
@@ -69,7 +67,7 @@ func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *con
 	config.(*NotifyReceiverConfig).Include = []string{include_path}
 
 	testLogsConsumer := new(consumertest.LogsSink)
-	settings := receivertest.NewNopSettings(component.MustNewType("filewatcher"))
+	settings := receivertest.NewNopSettings(component.MustNewType("filewatch"))
 	settings.Logger = zap.NewNop()
 	logs, err := createLogsReceiver(t.Context(), settings, config, testLogsConsumer)
 	require.NoError(t, err)
@@ -82,7 +80,7 @@ func testTeardown(t *testing.T, test_destination string) {
 	t.Logf("removing test_destination: %v", test_destination)
 	err := os.RemoveAll(test_destination)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 

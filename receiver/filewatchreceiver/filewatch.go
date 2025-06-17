@@ -1,4 +1,4 @@
-package filewatcher
+package filewatchreceiver
 
 import (
 	"context"
@@ -37,7 +37,7 @@ func createLogs(name, operation string) plog.Logs {
 	logSlice := resourceLogs.ScopeLogs().AppendEmpty().LogRecords()
 	logRecord := logSlice.AppendEmpty()
 	logRecord.SetSeverityNumber(plog.SeverityNumberInfo)
-	logRecord.SetSeverityText("INFO filewatcher")
+	logRecord.SetSeverityText("INFO")
 	logRecord.Attributes().PutStr("event", name)
 	logRecord.Attributes().PutStr("operation", operation)
 	logRecord.SetObservedTimestamp(pcommon.NewTimestampFromTime(time.Now()))

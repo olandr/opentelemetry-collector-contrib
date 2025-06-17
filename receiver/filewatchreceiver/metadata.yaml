@@ -1,0 +1,6 @@
+type: filewatch
+
+status:
+  class: receiver
+  stability:
+    development: [logs]

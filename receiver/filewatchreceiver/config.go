@@ -1,4 +1,4 @@
-package filewatcher
+package filewatchreceiver
 
 import (
 	"go.opentelemetry.io/collector/component"

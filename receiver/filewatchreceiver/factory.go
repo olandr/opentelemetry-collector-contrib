@@ -1,4 +1,4 @@
-package filewatcher
+package filewatchreceiver
 
 import (
 	"context"
@@ -8,9 +8,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 )
 
-var (
-	Type = component.MustNewType("filewatcher")
-)
+var Type = component.MustNewType("filewatch")
 
 func NewFactory() receiver.Factory {
 	return receiver.NewFactory(

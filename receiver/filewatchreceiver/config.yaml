@@ -1,10 +1,10 @@
 receivers:
-  filewatcher/regular:
+  filewatch/regular:
     include: ["testdata/include/..."]
     exclude: ["testdata/exclude/..."]
 
-  filewatcher/empty:
-  filewatcher/problematic:
+  filewatch/empty:
+  filewatch/problematic:
     include: ["testdata/-#{:,"]
 
 exporters:
@@ -15,6 +15,6 @@ exporters:
 service:
   pipelines:
     logs:
-      receivers: [filewatcher]
+      receivers: [filewatch]
       processors: []
       exporters: [debug]

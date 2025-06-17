@@ -1,6 +1,7 @@
-//go:build linux
+//go:build darwin && !kqueue && cgo && !ios
+// +build darwin,!kqueue,cgo,!ios
 
-package filewatcher
+package filewatchreceiver
 
 import (
 	"log"
@@ -15,7 +16,7 @@ import (
 // Opeartions to test
 func createDir(name string) {
 	time.Sleep(300 * time.Millisecond)
-	err := os.Mkdir(name, 0777)
+	err := os.Mkdir(name, 0o777)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,24 +24,24 @@ func createDir(name string) {
 
 func create(name string) *os.File {
 	time.Sleep(300 * time.Millisecond)
-	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return f
 }
+
 func remove(name string) {
 	time.Sleep(300 * time.Millisecond)
 	err := os.Remove(name)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func write(name string) *os.File {
 	time.Sleep(300 * time.Millisecond)
-	f, err := os.OpenFile(name, os.O_WRONLY, 0644)
+	f, err := os.OpenFile(name, os.O_WRONLY, 0o644)
 	_, err = f.Write([]byte(gofakeit.LetterN(10)))
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +59,7 @@ func rename(from, to string) {
 
 func Create(name string) []plog.Logs {
 	defer create(name).Close()
-	return []plog.Logs{createLogs(name, notify.InCreate.String())}
+	return []plog.Logs{createLogs(name, notify.Create.String())}
 }
 
 func CreateDir(name string) []plog.Logs {
@@ -68,21 +69,24 @@ func CreateDir(name string) []plog.Logs {
 
 func Remove(name string) []plog.Logs {
 	remove(name)
-	return []plog.Logs{createLogs(name, notify.InDelete.String())}
+	return []plog.Logs{createLogs(name, notify.Remove.String())}
 }
+
 func RenameRemove(name string) []plog.Logs {
-	return Remove(name)
+	remove(name)
+	return []plog.Logs{createLogs(name, notify.Rename.String()), createLogs(name, notify.Remove.String())}
 }
+
 func Write(name string) []plog.Logs {
 	defer write(name).Close()
-	return []plog.Logs{createLogs(name, notify.InCloseWrite.String())}
+	return []plog.Logs{createLogs(name, notify.Write.String())}
 }
 
 func WriteOnClose(name string) []plog.Logs {
-	return []plog.Logs{createLogs(name, notify.InCloseWrite.String())}
+	return nil
 }
 
 func Rename(from, to string) []plog.Logs {
 	rename(from, to)
-	return []plog.Logs{createLogs(from, notify.InMovedFrom.String()), createLogs(to, notify.InMovedTo.String())}
+	return []plog.Logs{createLogs(from, notify.Rename.String()), createLogs(to, notify.Rename.String())}
 }
