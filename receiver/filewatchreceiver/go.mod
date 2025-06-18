@@ -6,8 +6,8 @@ toolchain go1.24.3
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.2.1
+	github.com/olandr/notify v0.1.0
 	github.com/stretchr/testify v1.10.0
-	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	go.opentelemetry.io/collector/component v1.33.0
 	go.opentelemetry.io/collector/component/componenttest v0.127.0
 	go.opentelemetry.io/collector/confmap v1.33.0
@@ -63,7 +63,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace github.com/fsnotify/fsnotify v1.9.0 => github.com/olandr/fsnotify v1.9.5
-
-//replace github.com/fsnotify/fsnotify v1.9.0 => /Users/I756215/olandr/fsnotify

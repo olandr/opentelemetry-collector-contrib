@@ -2,9 +2,12 @@ package filewatchreceiver
 
 import (
 	"context"
+	"fmt"
+	_ "net/http/pprof"
+
 	"time"
 
-	"github.com/syncthing/notify"
+	"github.com/olandr/notify"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -19,6 +22,7 @@ type FileWatcher struct {
 	consumer consumer.Logs
 	logger   *zap.Logger
 	watcher  chan notify.EventInfo
+	notify   notify.Notify
 	done     chan struct{}
 }
 
@@ -45,7 +49,7 @@ func createLogs(name, operation string) plog.Logs {
 }
 
 func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInfo)) {
-	defer notify.Stop(fsn.watcher)
+	defer fsn.notify.Stop(fsn.watcher)
 	for {
 		select {
 		case <-ctx.Done():
@@ -64,18 +68,24 @@ func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInf
 func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
 	fsn.watcher = make(chan notify.EventInfo, 20)
 	fsn.done = make(chan struct{})
+	fsn.notify = notify.NewNotify()
 	go fsn.watch(ctx, fsn.watcher)
 	var err error
 	for _, f := range fsn.include {
-		err = notify.Watch(f, fsn.watcher, EVENTS_TO_WATCH)
+		err = fsn.notify.Watch(f, fsn.watcher, EVENTS_TO_WATCH)
 	}
 	return err
 }
 
 func (fsn *FileWatcher) Shutdown(_ context.Context) error {
-	fsn.done <- struct{}{}
-	close(fsn.done)
-	close(fsn.watcher)
-	fsn.done = nil
+	if fsn.done != nil {
+		fsn.done <- struct{}{}
+		close(fsn.done)
+		fsn.notify.Stop(fsn.watcher)
+		fsn.notify.Close()
+		fmt.Printf("closing notify\n")
+		close(fsn.watcher)
+		fsn.done = nil
+	}
 	return nil
 }

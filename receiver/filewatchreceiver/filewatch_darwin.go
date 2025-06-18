@@ -4,7 +4,7 @@
 package filewatchreceiver
 
 import (
-	"github.com/syncthing/notify"
+	"github.com/olandr/notify"
 )
 
 var EVENTS_TO_WATCH = notify.Create | notify.Remove | notify.Rename | notify.Write

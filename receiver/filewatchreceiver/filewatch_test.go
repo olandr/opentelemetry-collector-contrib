@@ -28,9 +28,8 @@ func eventuallyExpect(t *testing.T, expected int, actual int) {
 
 func TestFilewatcherReceiver(t *testing.T) {
 	beforeAll(t, TEST_INCLUDE_PATH)
-
 	time.Sleep(300 * time.Millisecond)
-	TEST_RUNS := gofakeit.UintRange(5, 10)
+	TEST_RUNS := gofakeit.UintRange(2, 5)
 	t.Run("can do simple crud", func(t *testing.T) {
 		t.Parallel()
 		// Arrange

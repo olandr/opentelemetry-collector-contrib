@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
-	"github.com/syncthing/notify"
+	"github.com/olandr/notify"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
