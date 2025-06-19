@@ -2,8 +2,8 @@ package filewatchreceiver
 
 import (
 	"context"
-	"fmt"
 	_ "net/http/pprof"
+	"path/filepath"
 
 	"time"
 
@@ -58,11 +58,28 @@ func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInf
 			_ = ok
 			return
 		case event := <-watcher:
-			fsn.logger.Debug("event", zap.String("name", event.Path()), zap.String("operation", event.Event().String()))
-			logs := createLogs(event.Path(), event.Event().String())
-			fsn.consumer.ConsumeLogs(ctx, logs)
+			// FIXME: this feels like a slow check; needs some benchmarking to see how this performs under load.
+			if fsn.shouldInclude(event.Path()) {
+				fsn.logger.Debug("event", zap.String("name", event.Path()), zap.String("operation", event.Event().String()))
+				logs := createLogs(event.Path(), event.Event().String())
+				fsn.consumer.ConsumeLogs(ctx, logs)
+			}
 		}
 	}
+}
+
+func (fsn *FileWatcher) shouldInclude(path string) bool {
+	for _, ex := range fsn.exclude {
+		exclude, err := filepath.Match(ex, path)
+		if exclude {
+			return false
+		}
+		if err != nil {
+			fsn.logger.Error("could not find match, excluding anyways", zap.Error(err))
+			return false
+		}
+	}
+	return true
 }
 
 func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
@@ -83,7 +100,6 @@ func (fsn *FileWatcher) Shutdown(_ context.Context) error {
 		close(fsn.done)
 		fsn.notify.Stop(fsn.watcher)
 		fsn.notify.Close()
-		fmt.Printf("closing notify\n")
 		close(fsn.watcher)
 		fsn.done = nil
 	}

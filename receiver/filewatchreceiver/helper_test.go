@@ -42,29 +42,52 @@ func beforeAll(t *testing.T, path string) {
 	}
 }
 
-func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, string) {
+func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, *NotifyReceiverConfig) {
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
-	test_destination := filepath.Join(wd, TEST_INCLUDE_PATH, gofakeit.LetterN(5))
-	err = os.Mkdir(test_destination, 0o777)
+	test_dir := gofakeit.LetterN(5)
+
+	include_dir := filepath.Join(wd, TEST_INCLUDE_PATH, test_dir)
+	err = os.Mkdir(include_dir, 0o777)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.Mkdir(fmt.Sprintf("%v/exclude", include_dir), 0o777)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exclude_dir := filepath.Join(wd, TEST_EXCLUDE_PATH, test_dir)
+	err = os.Mkdir(exclude_dir, 0o777)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// fixme: add test case for this
+	err = os.Mkdir(fmt.Sprintf("%v/include", exclude_dir), 0o777)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if should_create_inner_dir {
-		err = os.Mkdir(filepath.Join(test_destination, "inner"), 0o777)
+		err = os.Mkdir(filepath.Join(include_dir, "inner"), 0o777)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.Mkdir(filepath.Join(fmt.Sprintf("%v/include", exclude_dir), "inner"), 0o777)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	// this sleep is needed because any events (CREATE, WRITE or otherwise) made on the test_destination dir is NOT to be caught by the log receiver.
+	// this sleep is needed because any events (CREATE, WRITE or otherwise) made on the include_dir dir is NOT to be caught by the log receiver.
 	time.Sleep(1000 * time.Millisecond)
 
-	include_path := fmt.Sprintf("%v/...", test_destination)
+	include_path_0 := fmt.Sprintf("%v/...", include_dir)
+	exclude_path_0 := fmt.Sprintf("%v/...", exclude_dir)
 	config := createDefaultConfig()
-	config.(*NotifyReceiverConfig).Include = []string{include_path}
+	config.(*NotifyReceiverConfig).Include = []string{include_path_0}
+	config.(*NotifyReceiverConfig).Exclude = []string{exclude_path_0}
 
 	testLogsConsumer := new(consumertest.LogsSink)
 	settings := receivertest.NewNopSettings(component.MustNewType("filewatch"))
@@ -73,7 +96,7 @@ func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *con
 	require.NoError(t, err)
 	require.NoError(t, logs.Start(t.Context(), componenttest.NewNopHost()))
 
-	return logs, testLogsConsumer, test_destination
+	return logs, testLogsConsumer, config.(*NotifyReceiverConfig)
 }
 
 func testTeardown(t *testing.T, test_destination string) {

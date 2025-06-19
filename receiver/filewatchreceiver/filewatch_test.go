@@ -6,6 +6,7 @@ package filewatchreceiver
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,13 +29,15 @@ func eventuallyExpect(t *testing.T, expected int, actual int) {
 
 func TestFilewatcherReceiver(t *testing.T) {
 	beforeAll(t, TEST_INCLUDE_PATH)
+	beforeAll(t, TEST_EXCLUDE_PATH)
 	time.Sleep(300 * time.Millisecond)
 	TEST_RUNS := gofakeit.UintRange(2, 5)
 	t.Run("can do simple crud", func(t *testing.T) {
 		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
-		logs, actualLogsConsumer, wd := beforeEach(t, false)
+		logs, actualLogsConsumer, cfg := beforeEach(t, false)
+		wd := strings.Replace((gofakeit.RandomString(cfg.Include)), "/...", "", -1)
 
 		// Act
 		TEST_FILES := 1
@@ -63,7 +66,8 @@ func TestFilewatcherReceiver(t *testing.T) {
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		// We want to only listen to the outer path, but add files to a dir within
-		logs, actualLogsConsumer, wd := beforeEach(t, false)
+		logs, actualLogsConsumer, cfg := beforeEach(t, false)
+		wd := strings.Replace((gofakeit.RandomString(cfg.Include)), "/...", "", -1)
 		time.Sleep(300 * time.Millisecond)
 		// Act
 		createFiles := make([]string, TEST_RUNS)
@@ -87,12 +91,42 @@ func TestFilewatcherReceiver(t *testing.T) {
 		testTeardown(t, wd)
 	})
 
+	t.Run("no logs on excluded crud", func(t *testing.T) {
+		t.Parallel()
+		// Arrange
+		expectedLogsConsumer := new(consumertest.LogsSink)
+		logs, actualLogsConsumer, cfg := beforeEach(t, false)
+		wd := strings.Replace(strings.Replace((gofakeit.RandomString(cfg.Exclude)), "/...", "", -1), "/*", "", -1)
+
+		// Act
+		TEST_FILES := 1
+		createFiles := make([]string, TEST_FILES)
+		for tc := range TEST_FILES {
+
+			createFiles[tc] = fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
+			Create(createFiles[tc])
+			Write(createFiles[tc])
+			Remove(createFiles[tc])
+
+			// Assert
+			time.Sleep(300 * time.Millisecond)
+
+			expected := logsToMap(t, expectedLogsConsumer.AllLogs(), "expected")
+			actual := logsToMap(t, actualLogsConsumer.AllLogs(), "actual")
+			eventuallyExpect(t, expectedLogsConsumer.LogRecordCount(), actualLogsConsumer.LogRecordCount())
+			require.Equal(t, expected, actual)
+		}
+		require.NoError(t, logs.Shutdown(context.Background()))
+		testTeardown(t, wd)
+	})
+
 	t.Run("can watch existing dir", func(t *testing.T) {
 		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		// We want to only listen to the outer path, but add files to a dir within
-		logs, actualLogsConsumer, wd := beforeEach(t, true)
+		logs, actualLogsConsumer, cfg := beforeEach(t, true)
+		wd := strings.Replace((gofakeit.RandomString(cfg.Include)), "/...", "", -1)
 		wd_inner := fmt.Sprintf("%v/inner", wd)
 		// Act
 		TEST_FILES := 1
@@ -120,7 +154,8 @@ func TestFilewatcherReceiver(t *testing.T) {
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
 		// We want to only listen to the outer path, but add files to a dir within
-		logs, actualLogsConsumer, wd := beforeEach(t, true)
+		logs, actualLogsConsumer, cfg := beforeEach(t, true)
+		wd := strings.Replace((gofakeit.RandomString(cfg.Include)), "/...", "", -1)
 		wd_inner := fmt.Sprintf("%v/inner", wd)
 		// Act
 		TEST_FILES := 1
@@ -153,7 +188,8 @@ func TestFilewatcherReceiver(t *testing.T) {
 		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
-		logs, actualLogsConsumer, wd := beforeEach(t, false)
+		logs, actualLogsConsumer, cfg := beforeEach(t, false)
+		wd := strings.Replace((gofakeit.RandomString(cfg.Include)), "/...", "", -1)
 		// Act
 		createFiles := make([]string, TEST_RUNS)
 		for tc := range TEST_RUNS {
@@ -180,7 +216,8 @@ func TestFilewatcherReceiver(t *testing.T) {
 		t.Parallel()
 		// Arrange
 		expectedLogsConsumer := new(consumertest.LogsSink)
-		logs, actualLogsConsumer, wd := beforeEach(t, false)
+		logs, actualLogsConsumer, cfg := beforeEach(t, false)
+		wd := strings.Replace((gofakeit.RandomString(cfg.Include)), "/...", "", -1)
 
 		// Act
 		orignalName := fmt.Sprintf("%v/%v.txt", wd, gofakeit.LetterN(5))
