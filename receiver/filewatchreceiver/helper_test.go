@@ -28,7 +28,7 @@ var (
 	TEST_INNER_PATH             = "testdata/include/inner"
 )
 
-func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, *NotifyReceiverConfig, string) {
+func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, *NotifyReceiverConfig, string) {
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -73,10 +73,12 @@ func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *con
 	time.Sleep(1000 * time.Millisecond)
 
 	include_path_0 := fmt.Sprintf("%v/...", include_dir)
+	include_path_1 := fmt.Sprintf(".*\\.ok")
 	exclude_path_0 := fmt.Sprintf("%v/...", exclude_dir)
+	exclude_path_1 := fmt.Sprintf(".*\\.skip")
 	config := createDefaultConfig()
-	config.(*NotifyReceiverConfig).Include = []string{include_path_0}
-	config.(*NotifyReceiverConfig).Exclude = []string{exclude_path_0}
+	config.(*NotifyReceiverConfig).Include = []string{include_path_0, include_path_1}
+	config.(*NotifyReceiverConfig).Exclude = []string{exclude_path_0, exclude_path_1}
 
 	testLogsConsumer := new(consumertest.LogsSink)
 	settings := receivertest.NewNopSettings(component.MustNewType("filewatch"))
@@ -88,16 +90,16 @@ func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *con
 	return logs, testLogsConsumer, config.(*NotifyReceiverConfig), root_dir
 }
 
-func testTeardown(t *testing.T, test_destination string) {
-	t.Logf("removing test_destination: %v", test_destination)
+func testTeardown[A testing.TB](tb A, test_destination string) {
+	tb.Logf("removing test_destination: %v", test_destination)
 	err := os.RemoveAll(test_destination)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 }
 
 // logsToMap will take a list of logs and each LogRecord to a map which will count distinct events (up to path and operation). This is useful if testing the out-of-order arrival of log records between expected and actual consumers. Solves issue with ignoring order.
-func logsToMap(t *testing.T, logs []plog.Logs, msgs ...interface{}) map[string]uint {
+func logsToMap[A testing.TB](tb A, logs []plog.Logs, msgs ...interface{}) map[string]uint {
 	ret := make(map[string]uint)
 	for _, log := range logs {
 		for i := 0; i < log.ResourceLogs().Len(); i++ {
@@ -105,8 +107,7 @@ func logsToMap(t *testing.T, logs []plog.Logs, msgs ...interface{}) map[string]u
 				event, _ := log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0).Attributes().Get("event")
 				operation, _ := log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0).Attributes().Get("operation")
 				hash := fmt.Sprintf("%s-%s", filepath.Base(event.AsString()), operation.AsString())
-				t.Logf("%s, hash=%v", msgs, hash)
-
+				tb.Logf("%s, hash=%v", msgs, hash)
 				ret[hash] += 1
 			}
 		}
@@ -114,8 +115,8 @@ func logsToMap(t *testing.T, logs []plog.Logs, msgs ...interface{}) map[string]u
 	return ret
 }
 
-func consumeLogs(t *testing.T, consumer *consumertest.LogsSink, logs []plog.Logs) {
+func consumeLogs[A testing.TB](tb A, consumer *consumertest.LogsSink, logs []plog.Logs) {
 	for _, log := range logs {
-		consumer.ConsumeLogs(t.Context(), log)
+		consumer.ConsumeLogs(tb.Context(), log)
 	}
 }

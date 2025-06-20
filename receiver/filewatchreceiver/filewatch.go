@@ -24,6 +24,14 @@ type FileWatcher struct {
 	watcher  chan notify.EventInfo
 	notify   notify.Notify
 	done     chan struct{}
+	internal metrics // Benchmark
+}
+
+// Benchmark
+type metrics struct {
+	data            []int64
+	total_duration  int64 // µs
+	events_recorded int64
 }
 
 func newNotify(cfg *NotifyReceiverConfig, consumer consumer.Logs, settings receiver.Settings) (*FileWatcher, error) {
@@ -32,6 +40,7 @@ func newNotify(cfg *NotifyReceiverConfig, consumer consumer.Logs, settings recei
 		exclude:  cfg.Exclude,
 		consumer: consumer,
 		logger:   settings.Logger,
+		internal: metrics{make([]int64, 0), 0, 0}, // Benchmark
 	}, nil
 }
 
@@ -104,4 +113,9 @@ func (fsn *FileWatcher) Shutdown(_ context.Context) error {
 		fsn.done = nil
 	}
 	return nil
+}
+
+// Benchmark
+func (fsn *FileWatcher) Benchmark() metrics {
+	return fsn.internal
 }
