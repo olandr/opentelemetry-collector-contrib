@@ -2,8 +2,9 @@ package filewatchreceiver
 
 import (
 	"context"
+	"fmt"
 	_ "net/http/pprof"
-	"path/filepath"
+	"regexp"
 
 	"time"
 
@@ -24,6 +25,7 @@ type FileWatcher struct {
 	watcher  chan notify.EventInfo
 	notify   notify.Notify
 	done     chan struct{}
+	patterns []*regexp.Regexp
 	internal metrics // Benchmark
 }
 
@@ -67,24 +69,24 @@ func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInf
 			_ = ok
 			return
 		case event := <-watcher:
+			b := time.Now() // Benchmark
 			// FIXME: this feels like a slow check; needs some benchmarking to see how this performs under load.
 			if fsn.shouldInclude(event.Path()) {
 				fsn.logger.Debug("event", zap.String("name", event.Path()), zap.String("operation", event.Event().String()))
 				logs := createLogs(event.Path(), event.Event().String())
 				fsn.consumer.ConsumeLogs(ctx, logs)
 			}
+			// Benchmark
+			fsn.internal.data = append(fsn.internal.data, time.Since(b).Microseconds())
+			fsn.internal.total_duration += (time.Since(b).Microseconds())
+			fsn.internal.events_recorded++
 		}
 	}
 }
 
 func (fsn *FileWatcher) shouldInclude(path string) bool {
-	for _, ex := range fsn.exclude {
-		exclude, err := filepath.Match(ex, path)
-		if exclude {
-			return false
-		}
-		if err != nil {
-			fsn.logger.Error("could not find match, excluding anyways", zap.Error(err))
+	for _, ex := range fsn.patterns {
+		if ex.MatchString(path) {
 			return false
 		}
 	}
@@ -92,15 +94,36 @@ func (fsn *FileWatcher) shouldInclude(path string) bool {
 }
 
 func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
-	fsn.watcher = make(chan notify.EventInfo, 20)
+	fsn.watcher = make(chan notify.EventInfo, 128)
 	fsn.done = make(chan struct{})
 	fsn.notify = notify.NewNotify()
 	go fsn.watch(ctx, fsn.watcher)
 	var err error
+	if len(fsn.include) == 0 {
+		return nil
+	}
+	// Setup watches by include paths and prepare exclusions
+	watches := len(fsn.include)
+	for _, ex := range fsn.exclude {
+		pattern, err := regexp.Compile(ex)
+		// If we cannot create an exclude we should fail.
+		if err != nil {
+			return err
+		}
+		fsn.patterns = append(fsn.patterns, pattern)
+	}
 	for _, f := range fsn.include {
 		err = fsn.notify.Watch(f, fsn.watcher, EVENTS_TO_WATCH)
+		// We are more lenient with problematic include paths
+		if err != nil {
+			fsn.logger.Error("cannot creating watch, skipping", zap.String("path", f), zap.Error(err))
+			watches--
+		}
 	}
-	return err
+	if watches == 0 {
+		return fmt.Errorf("could not create any watches on the supplied 'include' paths")
+	}
+	return nil
 }
 
 func (fsn *FileWatcher) Shutdown(_ context.Context) error {
