@@ -14,16 +14,20 @@ import (
 )
 
 // Opeartions to test
-func createDir(name string) {
-	time.Sleep(300 * time.Millisecond)
+func createDir(name string, should_sleep bool) {
+	if should_sleep {
+		time.Sleep(15 * time.Millisecond)
+	}
 	err := os.Mkdir(name, 0o777)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func create(name string) *os.File {
-	time.Sleep(300 * time.Millisecond)
+func create(name string, should_sleep bool) *os.File {
+	if should_sleep {
+		time.Sleep(15 * time.Millisecond)
+	}
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		log.Fatal(err)
@@ -31,16 +35,20 @@ func create(name string) *os.File {
 	return f
 }
 
-func remove(name string) {
-	time.Sleep(300 * time.Millisecond)
+func remove(name string, should_sleep bool) {
+	if should_sleep {
+		time.Sleep(15 * time.Millisecond)
+	}
 	err := os.Remove(name)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func write(name string) *os.File {
-	time.Sleep(300 * time.Millisecond)
+func write(name string, should_sleep bool) *os.File {
+	if should_sleep {
+		time.Sleep(15 * time.Millisecond)
+	}
 	f, err := os.OpenFile(name, os.O_WRONLY, 0o644)
 	_, err = f.Write([]byte(gofakeit.LetterN(10)))
 	if err != nil {
@@ -49,44 +57,46 @@ func write(name string) *os.File {
 	return f
 }
 
-func rename(from, to string) {
-	time.Sleep(300 * time.Millisecond)
+func rename(from, to string, should_sleep bool) {
+	if should_sleep {
+		time.Sleep(15 * time.Millisecond)
+	}
 	err := os.Rename(from, to)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func Create(name string) []plog.Logs {
-	defer create(name).Close()
+func Create(name string, should_sleep bool) []plog.Logs {
+	defer create(name, should_sleep).Close()
 	return []plog.Logs{createLogs(name, notify.Create.String())}
 }
 
-func CreateDir(name string) []plog.Logs {
-	createDir(name)
+func CreateDir(name string, should_sleep bool) []plog.Logs {
+	createDir(name, should_sleep)
 	return []plog.Logs{createLogs(name, notify.Create.String())}
 }
 
-func Remove(name string) []plog.Logs {
-	remove(name)
+func Remove(name string, should_sleep bool) []plog.Logs {
+	remove(name, should_sleep)
 	return []plog.Logs{createLogs(name, notify.Remove.String())}
 }
 
-func RenameRemove(name string) []plog.Logs {
-	remove(name)
+func RenameRemove(name string, should_sleep bool) []plog.Logs {
+	remove(name, should_sleep)
 	return []plog.Logs{createLogs(name, notify.Rename.String()), createLogs(name, notify.Remove.String())}
 }
 
-func Write(name string) []plog.Logs {
-	defer write(name).Close()
+func Write(name string, should_sleep bool) []plog.Logs {
+	defer write(name, should_sleep).Close()
 	return []plog.Logs{createLogs(name, notify.Write.String())}
 }
 
-func WriteOnClose(name string) []plog.Logs {
+func WriteOnClose(name string, should_sleep bool) []plog.Logs {
 	return nil
 }
 
-func Rename(from, to string) []plog.Logs {
-	rename(from, to)
+func Rename(from, to string, should_sleep bool) []plog.Logs {
+	rename(from, to, should_sleep)
 	return []plog.Logs{createLogs(from, notify.Rename.String()), createLogs(to, notify.Rename.String())}
 }
