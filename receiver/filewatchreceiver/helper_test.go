@@ -28,28 +28,20 @@ var (
 	TEST_INNER_PATH             = "testdata/include/inner"
 )
 
-func beforeAll(t *testing.T, path string) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	test_destination_parent := filepath.Join(wd, path)
-
-	testTeardown(t, test_destination_parent)
-	err = os.Mkdir(test_destination_parent, 0o777)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, *NotifyReceiverConfig) {
+func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, *NotifyReceiverConfig, string) {
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 	test_dir := gofakeit.LetterN(5)
 
-	include_dir := filepath.Join(wd, TEST_INCLUDE_PATH, test_dir)
+	root_dir := filepath.Join(wd, "testdata", test_dir)
+	err = os.Mkdir(root_dir, 0o777)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	include_dir := filepath.Join(root_dir, "include")
 	err = os.Mkdir(include_dir, 0o777)
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +51,7 @@ func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *con
 		t.Fatal(err)
 	}
 
-	exclude_dir := filepath.Join(wd, TEST_EXCLUDE_PATH, test_dir)
+	exclude_dir := filepath.Join(root_dir, "exclude")
 	err = os.Mkdir(exclude_dir, 0o777)
 	if err != nil {
 		t.Fatal(err)
@@ -75,11 +67,8 @@ func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *con
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.Mkdir(filepath.Join(fmt.Sprintf("%v/include", exclude_dir), "inner"), 0o777)
-		if err != nil {
-			t.Fatal(err)
-		}
 	}
+
 	// this sleep is needed because any events (CREATE, WRITE or otherwise) made on the include_dir dir is NOT to be caught by the log receiver.
 	time.Sleep(1000 * time.Millisecond)
 
@@ -96,7 +85,7 @@ func beforeEach(t *testing.T, should_create_inner_dir bool) (receiver.Logs, *con
 	require.NoError(t, err)
 	require.NoError(t, logs.Start(t.Context(), componenttest.NewNopHost()))
 
-	return logs, testLogsConsumer, config.(*NotifyReceiverConfig)
+	return logs, testLogsConsumer, config.(*NotifyReceiverConfig), root_dir
 }
 
 func testTeardown(t *testing.T, test_destination string) {
