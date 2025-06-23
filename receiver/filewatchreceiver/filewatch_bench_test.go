@@ -165,5 +165,4 @@ func BenchmarkFilewatcherReceiver(b *testing.B) {
 		require.NoError(b, logs.Shutdown(context.Background()))
 		testTeardown(b, root_dir)
 	})
-
 }

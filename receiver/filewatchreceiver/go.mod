@@ -1,4 +1,4 @@
-module github.com/olandr/opentelemetry-collector-contrib/receiver/filewatch
+module github.com/olandr/opentelemetry-collector-contrib/receiver/filewatchreceiver
 
 go 1.24.2
 
