@@ -13,10 +13,14 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
+var (
+	SLEEP_TIMEOUT = 100
+)
+
 // Opeartions to test
 func createDir(name string, should_sleep bool) {
 	if should_sleep {
-		time.Sleep(15 * time.Millisecond)
+		time.Sleep(time.Duration(SLEEP_TIMEOUT) * time.Millisecond)
 	}
 	err := os.Mkdir(name, 0o777)
 	if err != nil {
@@ -26,7 +30,7 @@ func createDir(name string, should_sleep bool) {
 
 func create(name string, should_sleep bool) *os.File {
 	if should_sleep {
-		time.Sleep(15 * time.Millisecond)
+		time.Sleep(time.Duration(SLEEP_TIMEOUT) * time.Millisecond)
 	}
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -37,7 +41,7 @@ func create(name string, should_sleep bool) *os.File {
 
 func remove(name string, should_sleep bool) {
 	if should_sleep {
-		time.Sleep(15 * time.Millisecond)
+		time.Sleep(time.Duration(SLEEP_TIMEOUT) * time.Millisecond)
 	}
 	err := os.Remove(name)
 	if err != nil {
@@ -47,7 +51,7 @@ func remove(name string, should_sleep bool) {
 
 func write(name string, should_sleep bool) *os.File {
 	if should_sleep {
-		time.Sleep(15 * time.Millisecond)
+		time.Sleep(time.Duration(SLEEP_TIMEOUT) * time.Millisecond)
 	}
 	f, err := os.OpenFile(name, os.O_WRONLY, 0o644)
 	_, err = f.Write([]byte(gofakeit.LetterN(10)))
@@ -59,7 +63,7 @@ func write(name string, should_sleep bool) *os.File {
 
 func rename(from, to string, should_sleep bool) {
 	if should_sleep {
-		time.Sleep(15 * time.Millisecond)
+		time.Sleep(time.Duration(SLEEP_TIMEOUT) * time.Millisecond)
 	}
 	err := os.Rename(from, to)
 	if err != nil {

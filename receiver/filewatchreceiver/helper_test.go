@@ -91,7 +91,7 @@ func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs,
 }
 
 func testTeardown[A testing.TB](tb A, test_destination string) {
-	tb.Logf("removing test_destination: %v", test_destination)
+	//tb.Logf("removing test_destination: %v", test_destination)
 	err := os.RemoveAll(test_destination)
 	if err != nil {
 		tb.Fatal(err)
@@ -107,7 +107,7 @@ func logsToMap[A testing.TB](tb A, logs []plog.Logs, msgs ...interface{}) map[st
 				event, _ := log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0).Attributes().Get("event")
 				operation, _ := log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0).Attributes().Get("operation")
 				hash := fmt.Sprintf("%s-%s", filepath.Base(event.AsString()), operation.AsString())
-				tb.Logf("%s, hash=%v", msgs, hash)
+				//tb.Logf("%s, hash=%v", msgs, hash)
 				ret[hash] += 1
 			}
 		}
