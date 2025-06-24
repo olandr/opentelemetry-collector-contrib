@@ -73,27 +73,27 @@ func rename(from, to string, should_sleep bool) {
 
 func Create(name string, should_sleep bool) []plog.Logs {
 	defer create(name, should_sleep).Close()
-	return []plog.Logs{createLogs(name, notify.Create.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.Create.String())}
 }
 
 func CreateDir(name string, should_sleep bool) []plog.Logs {
 	createDir(name, should_sleep)
-	return []plog.Logs{createLogs(name, notify.Create.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.Create.String())}
 }
 
 func Remove(name string, should_sleep bool) []plog.Logs {
 	remove(name, should_sleep)
-	return []plog.Logs{createLogs(name, notify.Remove.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.Remove.String())}
 }
 
 func RenameRemove(name string, should_sleep bool) []plog.Logs {
 	remove(name, should_sleep)
-	return []plog.Logs{createLogs(name, notify.Rename.String()), createLogs(name, notify.Remove.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.Rename.String()), createLogs(time.Now(), name, notify.Remove.String())}
 }
 
 func Write(name string, should_sleep bool) []plog.Logs {
 	defer write(name, should_sleep).Close()
-	return []plog.Logs{createLogs(name, notify.Write.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.Write.String())}
 }
 
 func WriteOnClose(name string, should_sleep bool) []plog.Logs {
@@ -102,5 +102,5 @@ func WriteOnClose(name string, should_sleep bool) []plog.Logs {
 
 func Rename(from, to string, should_sleep bool) []plog.Logs {
 	rename(from, to, should_sleep)
-	return []plog.Logs{createLogs(from, notify.Rename.String()), createLogs(to, notify.Rename.String())}
+	return []plog.Logs{createLogs(time.Now(), from, notify.Rename.String()), createLogs(time.Now(), to, notify.Rename.String())}
 }

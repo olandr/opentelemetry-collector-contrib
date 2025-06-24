@@ -62,17 +62,17 @@ func rename(from, to string) {
 
 func Create(name string) []plog.Logs {
 	defer create(name).Close()
-	return []plog.Logs{createLogs(name, notify.InCreate.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.InCreate.String())}
 }
 
 func CreateDir(name string) []plog.Logs {
 	createDir(name)
-	return []plog.Logs{createLogs(name, notify.Create.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.Create.String())}
 }
 
 func Remove(name string) []plog.Logs {
 	remove(name)
-	return []plog.Logs{createLogs(name, notify.InDelete.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.InDelete.String())}
 }
 
 func RenameRemove(name string) []plog.Logs {
@@ -81,14 +81,14 @@ func RenameRemove(name string) []plog.Logs {
 
 func Write(name string) []plog.Logs {
 	defer write(name).Close()
-	return []plog.Logs{createLogs(name, notify.InCloseWrite.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.InCloseWrite.String())}
 }
 
 func WriteOnClose(name string) []plog.Logs {
-	return []plog.Logs{createLogs(name, notify.InCloseWrite.String())}
+	return []plog.Logs{createLogs(time.Now(), name, notify.InCloseWrite.String())}
 }
 
 func Rename(from, to string) []plog.Logs {
 	rename(from, to)
-	return []plog.Logs{createLogs(from, notify.InMovedFrom.String()), createLogs(to, notify.InMovedTo.String())}
+	return []plog.Logs{createLogs(time.Now(), from, notify.InMovedFrom.String()), createLogs(time.Now(), to, notify.InMovedTo.String())}
 }

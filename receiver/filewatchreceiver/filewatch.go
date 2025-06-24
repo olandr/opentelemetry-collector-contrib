@@ -42,14 +42,15 @@ func newNotify(cfg *NotifyReceiverConfig, consumer consumer.Logs, settings recei
 	}, nil
 }
 
-func createLogs(name, operation string) plog.Logs {
+func createLogs(ts time.Time, path, operation string) plog.Logs {
 	logs := plog.NewLogs()
 	resourceLogs := logs.ResourceLogs().AppendEmpty()
 	logSlice := resourceLogs.ScopeLogs().AppendEmpty().LogRecords()
 	logRecord := logSlice.AppendEmpty()
 	logRecord.SetSeverityNumber(plog.SeverityNumberInfo)
 	logRecord.SetSeverityText(plog.SeverityNumberInfo.String())
-	logRecord.Attributes().PutStr("event", name)
+	logRecord.SetTimestamp(pcommon.NewTimestampFromTime(ts))
+	logRecord.Attributes().PutStr("path", path)
 	logRecord.Attributes().PutStr("operation", operation)
 	logRecord.SetObservedTimestamp(pcommon.NewTimestampFromTime(time.Now()))
 	return logs
@@ -67,8 +68,9 @@ func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInf
 		case event := <-watcher:
 			b := time.Now() // Benchmark
 			// FIXME: this feels like a slow check; needs some benchmarking to see how this performs under load.
-			fsn.logger.Debug("event", zap.String("name", event.Path()), zap.String("operation", event.Event().String()))
-			logs := createLogs(event.Path(), event.Event().String())
+			ts := time.Unix(event.Timestamp(), 0)
+			fsn.logger.Debug("event", zap.Time("ts", ts), zap.String("path", event.Path()), zap.String("operation", event.Event().String()))
+			logs := createLogs(ts, event.Path(), event.Event().String())
 			fsn.consumer.ConsumeLogs(ctx, logs)
 			// Benchmark
 			fsn.internal.data = append(fsn.internal.data, time.Since(b).Microseconds())

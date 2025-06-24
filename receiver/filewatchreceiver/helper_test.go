@@ -2,6 +2,7 @@ package filewatchreceiver
 
 import (
 	"fmt"
+	"iter"
 	"os"
 	"path/filepath"
 	"testing"
@@ -98,19 +99,33 @@ func testTeardown[A testing.TB](tb A, test_destination string) {
 	}
 }
 
-// logsToMap will take a list of logs and each LogRecord to a map which will count distinct events (up to path and operation). This is useful if testing the out-of-order arrival of log records between expected and actual consumers. Solves issue with ignoring order.
-func logsToMap[A testing.TB](tb A, logs []plog.Logs, msgs ...interface{}) map[string]uint {
-	ret := make(map[string]uint)
-	for _, log := range logs {
-		for i := 0; i < log.ResourceLogs().Len(); i++ {
-			for j := 0; j < log.ResourceLogs().At(i).ScopeLogs().Len(); j++ {
-				event, _ := log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0).Attributes().Get("event")
-				operation, _ := log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0).Attributes().Get("operation")
-				hash := fmt.Sprintf("%s-%s", filepath.Base(event.AsString()), operation.AsString())
-				//tb.Logf("%s, hash=%v", msgs, hash)
-				ret[hash] += 1
+// logsToMap will take a list of logs and each LogRecord to a map which will count distinct events (up to: Path and Operation).
+// This is useful if testing the out-of-order arrival of log records between expected and actual consumers. Solves issue with ignoring order.
+func logsIterator(logs []plog.Logs) iter.Seq[plog.LogRecord] {
+	return func(yield func(plog.LogRecord) bool) {
+		for _, log := range logs {
+			for i := 0; i < log.ResourceLogs().Len(); i++ {
+				for j := 0; j < log.ResourceLogs().At(i).ScopeLogs().Len(); j++ {
+					if !yield(log.ResourceLogs().At(i).ScopeLogs().At(j).LogRecords().At(0)) {
+						return
+					}
+				}
 			}
 		}
+	}
+}
+
+// logsToMap will take a list of logs and each LogRecord to a map which will count distinct events (up to: Path and Operation).
+// This is useful if testing the out-of-order arrival of log records between expected and actual consumers. Solves issue with ignoring order.
+func logsToMap[A testing.TB](tb A, logs []plog.Logs, msgs ...interface{}) map[string]uint {
+	ret := make(map[string]uint)
+	for lr := range logsIterator(logs) {
+		// We ignore the timestamp entry for each log record as this is not trivial to check for equality on.
+		path, _ := lr.Attributes().Get("path")
+		operation, _ := lr.Attributes().Get("operation")
+		hash := fmt.Sprintf("%s-%s", filepath.Base(path.AsString()), operation.AsString())
+		//tb.Logf("%s, hash=%v", msgs, hash)
+		ret[hash] += 1
 	}
 	return ret
 }
