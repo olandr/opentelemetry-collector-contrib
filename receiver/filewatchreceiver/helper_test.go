@@ -3,8 +3,10 @@ package filewatchreceiver
 import (
 	"fmt"
 	"iter"
+	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -113,6 +115,36 @@ func logsIterator(logs []plog.Logs) iter.Seq[plog.LogRecord] {
 			}
 		}
 	}
+}
+
+// stats takes a bunch of floats and calculates some stats
+func stats[T int64 | float64](data []T) (average, q95 T) {
+	if len(data) == 0 {
+		return 0, 0
+	}
+	slices.Sort(data)
+	var sum T
+	for _, x := range data {
+		sum += x
+	}
+	x := 1 + float64(len(data)-1)*0.95
+	fx := math.Floor(x)
+	cx := math.Ceil(x)
+	if x == fx && fx == cx {
+		return sum / T(float64(len(data))), data[int(x)]
+	}
+	return sum / T(float64(len(data))), data[int(fx)] + T(x-fx)*(data[int(cx)]-data[int(fx)])
+}
+
+// logsObsTimestampDiffTimstamp will for each event compare the delta between Timestamp and observedTimestamp.
+// it will also return some basic stats.
+// Useful for calculating processing times of the receiver.
+func logsObsTimestampDiffTimstamp(logs []plog.Logs) []float64 {
+	ret := make([]float64, 0)
+	for lr := range logsIterator(logs) {
+		ret = append(ret, lr.ObservedTimestamp().AsTime().Sub(lr.Timestamp().AsTime()).Seconds())
+	}
+	return ret
 }
 
 // logsToMap will take a list of logs and each LogRecord to a map which will count distinct events (up to: Path and Operation).

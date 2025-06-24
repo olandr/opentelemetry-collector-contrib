@@ -27,7 +27,6 @@ type FileWatcher struct {
 
 // Benchmark
 type metrics struct {
-	data            []int64
 	total_duration  int64 // µs
 	events_recorded int64
 }
@@ -38,7 +37,7 @@ func newNotify(cfg *NotifyReceiverConfig, consumer consumer.Logs, settings recei
 		exclude:  cfg.Exclude,
 		consumer: consumer,
 		logger:   settings.Logger,
-		internal: metrics{make([]int64, 0), 0, 0}, // Benchmark
+		internal: metrics{0, 0}, // Benchmark
 	}, nil
 }
 
@@ -73,7 +72,6 @@ func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInf
 			logs := createLogs(ts, event.Path(), event.Event().String())
 			fsn.consumer.ConsumeLogs(ctx, logs)
 			// Benchmark
-			fsn.internal.data = append(fsn.internal.data, time.Since(b).Microseconds())
 			fsn.internal.total_duration += (time.Since(b).Microseconds())
 			fsn.internal.events_recorded++
 		}

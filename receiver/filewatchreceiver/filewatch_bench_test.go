@@ -61,13 +61,15 @@ func BenchmarkFilewatcherReceiver(b *testing.B) {
 		}
 
 		b.ReportMetric(float64(logs.(*FileWatcher).Benchmark().total_duration)/float64(logs.(*FileWatcher).Benchmark().events_recorded), "µs/event")
-		b.ReportMetric(float64(logs.(*FileWatcher).Benchmark().events_recorded)/float64(logs.(*FileWatcher).Benchmark().total_duration), "event/µs")
-		b.ReportMetric(float64(logs.(*FileWatcher).Benchmark().total_duration)/float64(b.N), "µs/loop")
+		b.ReportMetric(float64(logs.(*FileWatcher).Benchmark().events_recorded)/float64(b.N), "µs/loop")
 		expected := logsToMap(b, expectedLogsConsumer.AllLogs(), "expected")
 		actual := logsToMap(b, actualLogsConsumer.AllLogs(), "actual")
 		_, ratio := leftIntersect(expected, actual)
 		b.ReportMetric(ratio, "accuracy")
-
+		// This extracts the difference between observedTimestamp and timestamp, this gives us a view into how long time it takes from receiving an event to that it is actually sent off.
+		average, q95 := stats(logsObsTimestampDiffTimstamp(actualLogsConsumer.AllLogs()))
+		b.ReportMetric(float64(average), "Q50∆s")
+		b.ReportMetric(float64(q95), "Q95∆s")
 		require.NoError(b, logs.Shutdown(context.Background()))
 		testTeardown(b, root_dir)
 	})
@@ -93,9 +95,6 @@ func BenchmarkFilewatcherReceiver(b *testing.B) {
 			// Assert
 			createFiles = append(createFiles, name)
 		}
-		b.ReportMetric(float64(logs.(*FileWatcher).Benchmark().total_duration)/float64(logs.(*FileWatcher).Benchmark().events_recorded), "µs/event")
-		b.ReportMetric(float64(logs.(*FileWatcher).Benchmark().events_recorded)/float64(logs.(*FileWatcher).Benchmark().total_duration), "event/µs")
-		b.ReportMetric(float64(logs.(*FileWatcher).Benchmark().total_duration)/float64(b.N), "µs/loop")
 		expected := logsToMap(b, expectedLogsConsumer.AllLogs(), "expected")
 		actual := logsToMap(b, actualLogsConsumer.AllLogs(), "actual")
 		_, ratio := leftIntersect(expected, actual)
