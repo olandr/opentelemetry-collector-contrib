@@ -6,7 +6,7 @@ toolchain go1.24.3
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.2.1
-	github.com/olandr/notify v0.1.0
+	github.com/olandr/notify v0.3.1
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/component v1.33.0
 	go.opentelemetry.io/collector/component/componenttest v0.127.0

@@ -3,7 +3,6 @@ package filewatchreceiver
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/olandr/notify"
@@ -23,7 +22,6 @@ type FileWatcher struct {
 	watcher  chan notify.EventInfo
 	notify   notify.Notify
 	done     chan struct{}
-	patterns []*regexp.Regexp
 	internal metrics // Benchmark
 }
 
@@ -69,26 +67,15 @@ func (fsn *FileWatcher) watch(ctx context.Context, watcher chan (notify.EventInf
 		case event := <-watcher:
 			b := time.Now() // Benchmark
 			// FIXME: this feels like a slow check; needs some benchmarking to see how this performs under load.
-			if fsn.shouldInclude(event.Path()) {
-				fsn.logger.Debug("event", zap.String("name", event.Path()), zap.String("operation", event.Event().String()))
-				logs := createLogs(event.Path(), event.Event().String())
-				fsn.consumer.ConsumeLogs(ctx, logs)
-			}
+			fsn.logger.Debug("event", zap.String("name", event.Path()), zap.String("operation", event.Event().String()))
+			logs := createLogs(event.Path(), event.Event().String())
+			fsn.consumer.ConsumeLogs(ctx, logs)
 			// Benchmark
 			fsn.internal.data = append(fsn.internal.data, time.Since(b).Microseconds())
 			fsn.internal.total_duration += (time.Since(b).Microseconds())
 			fsn.internal.events_recorded++
 		}
 	}
-}
-
-func (fsn *FileWatcher) shouldInclude(path string) bool {
-	for _, ex := range fsn.patterns {
-		if ex.MatchString(path) {
-			return false
-		}
-	}
-	return true
 }
 
 func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
@@ -103,12 +90,7 @@ func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
 	// Setup watches by include paths and prepare exclusions
 	watches := len(fsn.include)
 	for _, ex := range fsn.exclude {
-		pattern, err := regexp.Compile(ex)
-		// If we cannot create an exclude we should fail.
-		if err != nil {
-			return err
-		}
-		fsn.patterns = append(fsn.patterns, pattern)
+		fsn.notify.Exclude(ex)
 	}
 	for _, f := range fsn.include {
 		err = fsn.notify.Watch(f, fsn.watcher, EVENTS_TO_WATCH)
