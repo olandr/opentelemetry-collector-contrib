@@ -17,7 +17,7 @@ import (
 
 type FactoryTestCase struct {
 	Name     string
-	Expected *NotifyReceiverConfig
+	Expected *FileWatchReceiverConfig
 	Error    error
 }
 

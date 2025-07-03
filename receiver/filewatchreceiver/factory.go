@@ -18,6 +18,6 @@ func NewFactory() receiver.Factory {
 }
 
 func createLogsReceiver(_ context.Context, settings receiver.Settings, baseCfg component.Config, consumer consumer.Logs) (receiver.Logs, error) {
-	cfg := baseCfg.(*NotifyReceiverConfig)
+	cfg := baseCfg.(*FileWatchReceiverConfig)
 	return newNotify(cfg, consumer, settings)
 }

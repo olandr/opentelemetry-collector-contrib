@@ -31,7 +31,7 @@ type metrics struct {
 	events_recorded int64
 }
 
-func newNotify(cfg *NotifyReceiverConfig, consumer consumer.Logs, settings receiver.Settings) (*FileWatcher, error) {
+func newNotify(cfg *FileWatchReceiverConfig, consumer consumer.Logs, settings receiver.Settings) (*FileWatcher, error) {
 	return &FileWatcher{
 		include:  cfg.Include,
 		exclude:  cfg.Exclude,

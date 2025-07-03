@@ -31,7 +31,7 @@ var (
 	TEST_INNER_PATH             = "testdata/include/inner"
 )
 
-func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, *NotifyReceiverConfig, string) {
+func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, *FileWatchReceiverConfig, string) {
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -80,8 +80,8 @@ func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs,
 	exclude_path_0 := fmt.Sprintf("%v/...", exclude_dir)
 	exclude_path_1 := fmt.Sprintf(".*\\.skip")
 	config := createDefaultConfig()
-	config.(*NotifyReceiverConfig).Include = []string{include_path_0, include_path_1}
-	config.(*NotifyReceiverConfig).Exclude = []string{exclude_path_0, exclude_path_1}
+	config.(*FileWatchReceiverConfig).Include = []string{include_path_0, include_path_1}
+	config.(*FileWatchReceiverConfig).Exclude = []string{exclude_path_0, exclude_path_1}
 
 	testLogsConsumer := new(consumertest.LogsSink)
 	settings := receivertest.NewNopSettings(component.MustNewType("filewatch"))
@@ -90,7 +90,7 @@ func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs,
 	require.NoError(t, err)
 	require.NoError(t, logs.Start(t.Context(), componenttest.NewNopHost()))
 
-	return logs, testLogsConsumer, config.(*NotifyReceiverConfig), root_dir
+	return logs, testLogsConsumer, config.(*FileWatchReceiverConfig), root_dir
 }
 
 func testTeardown[A testing.TB](tb A, test_destination string) {

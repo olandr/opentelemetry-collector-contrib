@@ -4,7 +4,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 )
 
-type NotifyReceiverConfig struct {
+type FileWatchReceiverConfig struct {
 	Include []string `mapstructure:"include,omitempty"`
 	Exclude []string `mapstructure:"exclude,omitempty"`
 
@@ -12,7 +12,7 @@ type NotifyReceiverConfig struct {
 }
 
 func createDefaultConfig() component.Config {
-	return &NotifyReceiverConfig{
+	return &FileWatchReceiverConfig{
 		Include: []string{},
 		Exclude: []string{},
 	}
