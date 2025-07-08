@@ -5,15 +5,13 @@ import (
 )
 
 type AuditdReceiverConfig struct {
-	Include []string `mapstructure:"include,omitempty"`
-	Exclude []string `mapstructure:"exclude,omitempty"`
+	Rules []string `mapstructure:"rules,omitempty"`
 
 	_ struct{}
 }
 
 func createDefaultConfig() component.Config {
 	return &AuditdReceiverConfig{
-		Include: []string{},
-		Exclude: []string{},
+		Rules: []string{},
 	}
 }

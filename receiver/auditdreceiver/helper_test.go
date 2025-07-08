@@ -27,11 +27,6 @@ import (
 var (
 	TEST_PATH                   = "testdata"
 	TEST_CONFIG_PATH            = "config.yaml"
-	TEST_INCLUDE_PATH           = "testdata/include"
-	TEST_EXCLUDE_PATH           = "testdata/exclude"
-	TEST_INCLUDE_RECURSIVE_PATH = "testdata/include/..."
-	TEST_EXCLUDE_RECURSIVE_PATH = "testdata/exclude/..."
-	TEST_INNER_PATH             = "testdata/include/inner"
 )
 
 func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs, *consumertest.LogsSink, *AuditdReceiverConfig, string) {
@@ -47,47 +42,13 @@ func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs,
 		t.Fatal(err)
 	}
 
-	include_dir := filepath.Join(root_dir, "include")
-	err = os.Mkdir(include_dir, 0o777)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Mkdir(fmt.Sprintf("%v/exclude", include_dir), 0o777)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	exclude_dir := filepath.Join(root_dir, "exclude")
-	err = os.Mkdir(exclude_dir, 0o777)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// fixme: add test case for this
-	err = os.Mkdir(fmt.Sprintf("%v/include", exclude_dir), 0o777)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if should_create_inner_dir {
-		err = os.Mkdir(filepath.Join(include_dir, "inner"), 0o777)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// this sleep is needed because any events (CREATE, WRITE or otherwise) made on the include_dir dir is NOT to be caught by the log receiver.
 	time.Sleep(1000 * time.Millisecond)
 
-	include_path_0 := fmt.Sprintf("%v/...", include_dir)
-	include_path_1 := fmt.Sprintf(".*\\.ok")
-	exclude_path_0 := fmt.Sprintf("%v/...", exclude_dir)
-	exclude_path_1 := fmt.Sprintf(".*\\.skip")
 	config := createDefaultConfig()
-	config.(*AuditdReceiverConfig).Include = []string{include_path_0, include_path_1}
-	config.(*AuditdReceiverConfig).Exclude = []string{exclude_path_0, exclude_path_1}
+	config.(*AuditdReceiverConfig).Rules = []string{}
 
 	testLogsConsumer := new(consumertest.LogsSink)
-	settings := receivertest.NewNopSettings(component.MustNewType("filewatch"))
+	settings := receivertest.NewNopSettings(component.MustNewType("auditd"))
 	settings.Logger = zap.NewNop()
 	logs, err := createLogsReceiver(t.Context(), settings, config, testLogsConsumer)
 	require.NoError(t, err)

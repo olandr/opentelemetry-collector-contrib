@@ -5,12 +5,16 @@ package auditdreceiver
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"time"
 
 	"github.com/elastic/go-libaudit/v2"
 	"github.com/elastic/go-libaudit/v2/auparse"
+	"github.com/elastic/go-libaudit/v2/rule"
+	"github.com/elastic/go-libaudit/v2/rule/flags"
+
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -20,6 +24,7 @@ import (
 )
 
 type Auditd struct {
+	rules    []string
 	client   *libaudit.AuditClient
 	consumer consumer.Logs
 	logger   *zap.Logger
@@ -35,6 +40,7 @@ type metrics struct {
 
 func newAuditd(cfg *AuditdReceiverConfig, consumer consumer.Logs, settings receiver.Settings) (*Auditd, error) {
 	return &Auditd{
+		rules:    cfg.Rules,
 		consumer: consumer,
 		logger:   settings.Logger,
 		internal: metrics{0, 0}, // Benchmark
@@ -56,6 +62,7 @@ func createLogs(ts time.Time, messageType auparse.AuditMessageType, messageData 
 }
 
 func (aud *Auditd) receive(ctx context.Context) {
+	log.Println("starting listening for events")
 	for {
 		select {
 		case _, ok := <-aud.done:
@@ -80,13 +87,68 @@ func (aud *Auditd) receive(ctx context.Context) {
 	}
 }
 
+func (aud *Auditd) prepareRules() error {
+	_, err := aud.client.DeleteRules()
+	if err != nil {
+		return fmt.Errorf("[ERROR] failed to delete all roles %w", err)
+	}
+	for _, rawRule := range aud.rules {
+		r, err := flags.Parse(rawRule)
+		if err != nil {
+			return fmt.Errorf("[ERROR] failed to parse rule %w", err)
+		}
+		wireRule, err := rule.Build(r)
+		if err != nil {
+			return fmt.Errorf("[ERROR] failed to build rule %w", err)
+		}
+		aud.client.AddRule(wireRule)
+		if err != nil {
+			return fmt.Errorf("[ERROR] failed to add rule: %v. (%v)", rawRule, err)
+		}
+	}
+	return nil
+}
+
+func (aud *Auditd) initAuditing() error {
+	status, err := aud.client.GetStatus()
+	if err != nil {
+		return fmt.Errorf("failed to get audit status: %w", err)
+	}
+	if status.Enabled == 0 {
+		log.Println("enabling auditing in the kernel")
+		if err = aud.client.SetEnabled(true, libaudit.WaitForReply); err != nil {
+			return fmt.Errorf("failed to set enabled=true: %w", err)
+		}
+	}
+	log.Printf("telling kernel this client should get the auditd logs")
+	if err = aud.client.SetPID(libaudit.NoWait); err != nil {
+		return fmt.Errorf("failed to set audit PID: %w", err)
+	}
+
+	return nil
+}
+
 func (aud *Auditd) Start(ctx context.Context, host component.Host) error {
 	var w io.Writer
-	client, err := libaudit.NewMulticastAuditClient(w)
+	client, err := libaudit.NewAuditClient(w)
 	if err != nil {
 		log.Fatal(err)
 	}
 	aud.client = client
+
+	_, err = aud.client.DeleteRules()
+	if err != nil {
+		return fmt.Errorf("[ERROR] failed to delete all roles %w", err)
+	}
+	err = aud.prepareRules()
+	if err != nil {
+		log.Printf("[ERROR] failed to setup rules: %v", err)
+	}
+
+	err = aud.initAuditing()
+	if err != nil {
+		log.Printf("[ERROR] failed to initialise auditing: %v", err)
+	}
 
 	go aud.receive(ctx)
 	return nil
