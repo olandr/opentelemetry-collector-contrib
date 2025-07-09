@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"github.com/elastic/go-libaudit/v2"
@@ -47,6 +46,7 @@ func newAuditd(cfg *AuditdReceiverConfig, consumer consumer.Logs, settings recei
 	}, nil
 }
 
+// NB: The auditd messages does not contain a Timestamp and because 'Timestamp' is optional (https://opentelemetry.io/docs/specs/otel/logs/data-model/#field-timestamp).
 func createLogs(ts time.Time, messageType auparse.AuditMessageType, messageData []byte) plog.Logs {
 	logs := plog.NewLogs()
 	resourceLogs := logs.ResourceLogs().AppendEmpty()
@@ -54,7 +54,6 @@ func createLogs(ts time.Time, messageType auparse.AuditMessageType, messageData 
 	logRecord := logSlice.AppendEmpty()
 	logRecord.SetSeverityNumber(plog.SeverityNumberInfo)
 	logRecord.SetSeverityText(plog.SeverityNumberInfo.String())
-	logRecord.SetTimestamp(pcommon.NewTimestampFromTime(ts))
 	logRecord.Attributes().PutStr("type", messageType.String())
 	logRecord.Attributes().PutStr("data", string(messageData))
 	logRecord.SetObservedTimestamp(pcommon.NewTimestampFromTime(time.Now()))
@@ -62,7 +61,7 @@ func createLogs(ts time.Time, messageType auparse.AuditMessageType, messageData 
 }
 
 func (aud *Auditd) receive(ctx context.Context) {
-	log.Println("starting listening for events")
+	aud.logger.Info("starting listening for events")
 	for {
 		select {
 		case _, ok := <-aud.done:
@@ -75,14 +74,14 @@ func (aud *Auditd) receive(ctx context.Context) {
 			if err != nil {
 				aud.logger.Error("receive failed", zap.Error(err))
 			}
-			// fixme: maybe it makes sense to record time before the receive? Or somehow exactly when the receive actually happens within the dependency? Because now timestamp is more or less the same as observed (only difference being createLogs overhead).
 			ts := time.Now()
 			// Messages from 1100-2999 are valid audit messages.
 			if rawEvent.Type < auparse.AUDIT_USER_AUTH ||
 				rawEvent.Type > auparse.AUDIT_LAST_USER_MSG2 {
 				continue
 			}
-			createLogs(ts, rawEvent.Type, rawEvent.Data)
+			logs := createLogs(ts, rawEvent.Type, rawEvent.Data)
+			aud.consumer.ConsumeLogs(ctx, logs)
 		}
 	}
 }
@@ -115,12 +114,12 @@ func (aud *Auditd) initAuditing() error {
 		return fmt.Errorf("failed to get audit status: %w", err)
 	}
 	if status.Enabled == 0 {
-		log.Println("enabling auditing in the kernel")
+		aud.logger.Info("enabling auditing in the kernel")
 		if err = aud.client.SetEnabled(true, libaudit.WaitForReply); err != nil {
 			return fmt.Errorf("failed to set enabled=true: %w", err)
 		}
 	}
-	log.Printf("telling kernel this client should get the auditd logs")
+	aud.logger.Info("telling kernel this client should get the auditd logs")
 	if err = aud.client.SetPID(libaudit.NoWait); err != nil {
 		return fmt.Errorf("failed to set audit PID: %w", err)
 	}
@@ -132,22 +131,22 @@ func (aud *Auditd) Start(ctx context.Context, host component.Host) error {
 	var w io.Writer
 	client, err := libaudit.NewAuditClient(w)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create client %w", err)
 	}
 	aud.client = client
 
 	_, err = aud.client.DeleteRules()
 	if err != nil {
-		return fmt.Errorf("[ERROR] failed to delete all roles %w", err)
+		return fmt.Errorf("failed to delete all roles %w", err)
 	}
 	err = aud.prepareRules()
 	if err != nil {
-		log.Printf("[ERROR] failed to setup rules: %v", err)
+		return fmt.Errorf("failed to setup rules: %v", err)
 	}
 
 	err = aud.initAuditing()
 	if err != nil {
-		log.Printf("[ERROR] failed to initialise auditing: %v", err)
+		return fmt.Errorf("failed to initialise auditing: %v", err)
 	}
 
 	go aud.receive(ctx)
