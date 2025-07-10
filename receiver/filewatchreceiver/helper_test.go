@@ -23,7 +23,6 @@ import (
 
 var (
 	TEST_PATH                   = "testdata"
-	TEST_CONFIG_PATH            = "config.yaml"
 	TEST_INCLUDE_PATH           = "testdata/include"
 	TEST_EXCLUDE_PATH           = "testdata/exclude"
 	TEST_INCLUDE_RECURSIVE_PATH = "testdata/include/..."
