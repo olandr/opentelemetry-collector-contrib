@@ -59,6 +59,7 @@ func createLogs(ts time.Time, messageType auparse.AuditMessageType, messageID in
 	logRecord := logSlice.AppendEmpty()
 	logRecord.SetSeverityNumber(plog.SeverityNumberInfo)
 	logRecord.SetSeverityText(plog.SeverityNumberInfo.String())
+	logRecord.SetTimestamp(pcommon.NewTimestampFromTime(ts))
 	logRecord.Attributes().PutStr("type", messageType.String())
 	logRecord.Attributes().PutInt("id", messageID)
 	logRecord.Attributes().PutStr("data", string(messageData))
