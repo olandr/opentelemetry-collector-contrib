@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	SLEEP_TIMEOUT = 300
+	EVENTS_TO_WATCH = []string{"notify.InAccess", "notify.InOpen", "notify.InCreate", "notify.InDelete", "notify.InCloseWrite"}
+	SLEEP_TIMEOUT   = 300
 )
 
 // Opeartions to test

@@ -81,6 +81,7 @@ func beforeEach[A testing.TB](t A, should_create_inner_dir bool) (receiver.Logs,
 	config := createDefaultConfig()
 	config.(*FileWatchReceiverConfig).Include = []string{include_path_0, include_path_1}
 	config.(*FileWatchReceiverConfig).Exclude = []string{exclude_path_0, exclude_path_1}
+	config.(*FileWatchReceiverConfig).Events = EVENTS_TO_WATCH
 
 	testLogsConsumer := new(consumertest.LogsSink)
 	settings := receivertest.NewNopSettings(component.MustNewType("filewatch"))

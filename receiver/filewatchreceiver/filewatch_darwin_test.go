@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	SLEEP_TIMEOUT = 100
+	EVENTS_TO_WATCH = []string{"notify.FSEventsCreated", "notify.FSEventsRemoved", "notify.FSEventsModified", "notify.FSEventsRenamed"}
+	SLEEP_TIMEOUT   = 100
 )
 
 // Opeartions to test

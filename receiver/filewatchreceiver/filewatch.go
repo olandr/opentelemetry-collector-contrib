@@ -17,6 +17,7 @@ import (
 type FileWatcher struct {
 	include  []string
 	exclude  []string
+	events   []string
 	consumer consumer.Logs
 	logger   *zap.Logger
 	watcher  chan notify.EventInfo
@@ -35,6 +36,7 @@ func newNotify(cfg *FileWatchReceiverConfig, consumer consumer.Logs, settings re
 	return &FileWatcher{
 		include:  cfg.Include,
 		exclude:  cfg.Exclude,
+		events:   cfg.Events,
 		consumer: consumer,
 		logger:   settings.Logger,
 		internal: metrics{0, 0}, // Benchmark
@@ -92,9 +94,18 @@ func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
 	for _, ex := range fsn.exclude {
 		fsn.notify.Exclude(ex)
 	}
+	var events_to_watch notify.Event
+	for _, name := range fsn.events {
+		if ev, ok := notify.NewEventFromString(name); ok {
+			events_to_watch |= ev
+		} else {
+			return fmt.Errorf("cannot create watch for the supplied event name: %v", name)
+		}
+	}
 	for _, f := range fsn.include {
-		fsn.logger.Info("setting up watches for", zap.String("events", fmt.Sprintf("%v", EVENTS_TO_WATCH)))
-		err = fsn.notify.Watch(f, fsn.watcher, EVENTS_TO_WATCH)
+		fsn.logger.Info("setting up watches for", zap.String("events", fmt.Sprintf("%v", events_to_watch)))
+
+		err = fsn.notify.Watch(f, fsn.watcher, events_to_watch)
 		// We are more lenient with problematic include paths
 		if err != nil {
 			fsn.logger.Error("cannot create watch, skipping", zap.String("path", f), zap.Error(err))
