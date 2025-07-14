@@ -7,4 +7,4 @@ import (
 	"github.com/olandr/notify"
 )
 
-var EVENTS_TO_WATCH = notify.InCreate | notify.InDelete | notify.InCloseWrite | notify.InMovedTo | notify.InMovedFrom
+var EVENTS_TO_WATCH = notify.InAccess | notify.InOpen | notify.InCreate | notify.InDelete | notify.InCloseWrite | notify.InMovedTo | notify.InMovedFrom

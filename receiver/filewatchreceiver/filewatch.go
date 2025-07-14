@@ -93,10 +93,11 @@ func (fsn *FileWatcher) Start(ctx context.Context, host component.Host) error {
 		fsn.notify.Exclude(ex)
 	}
 	for _, f := range fsn.include {
+		fsn.logger.Info("setting up watches for", zap.String("events", fmt.Sprintf("%v", EVENTS_TO_WATCH)))
 		err = fsn.notify.Watch(f, fsn.watcher, EVENTS_TO_WATCH)
 		// We are more lenient with problematic include paths
 		if err != nil {
-			fsn.logger.Error("cannot creating watch, skipping", zap.String("path", f), zap.Error(err))
+			fsn.logger.Error("cannot create watch, skipping", zap.String("path", f), zap.Error(err))
 			watches--
 		}
 	}
