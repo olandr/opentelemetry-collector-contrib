@@ -119,10 +119,6 @@ func (aud *Auditd) receive(ctx context.Context) {
 }
 
 func (aud *Auditd) prepareRules() error {
-	_, err := aud.client.DeleteRules()
-	if err != nil {
-		return fmt.Errorf("[ERROR] failed to delete all roles %w", err)
-	}
 	for _, rawRule := range aud.rules {
 		r, err := flags.Parse(rawRule)
 		if err != nil {
@@ -132,7 +128,7 @@ func (aud *Auditd) prepareRules() error {
 		if err != nil {
 			return fmt.Errorf("[ERROR] failed to build rule %w", err)
 		}
-		aud.client.AddRule(wireRule)
+		err = aud.client.AddRule(wireRule)
 		if err != nil {
 			return fmt.Errorf("[ERROR] failed to add rule: %v. (%v)", rawRule, err)
 		}
@@ -167,10 +163,6 @@ func (aud *Auditd) Start(ctx context.Context, host component.Host) error {
 	}
 	aud.client = client
 
-	_, err = aud.client.DeleteRules()
-	if err != nil {
-		return fmt.Errorf("failed to delete all roles %w", err)
-	}
 	err = aud.prepareRules()
 	if err != nil {
 		return fmt.Errorf("failed to setup rules: %v", err)
